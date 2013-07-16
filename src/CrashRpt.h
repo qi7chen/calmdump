@@ -37,10 +37,12 @@
  *  \author zeXspectrum 
  */
 
-// @file    CrashHandler.h 
+//////////////////////////////////////////////////////////////////////////
+// @file    CrashRpt.h 
 // @author  ichenq@gmail.com 
 // @date    Jul, 2013
 // @brief  
+//////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
@@ -644,8 +646,10 @@ crExceptionFilter(
   unsigned int code, 
   __in_opt struct _EXCEPTION_POINTERS* ep);
 
+// Flags used by crEmulateCrash() function
 #define CR_NONCONTINUABLE_EXCEPTION  32  //!< Non continuable sofware exception. 
 #define CR_THROW                     33  //!< Throw C++ typed exception.
+#define CR_STACK_OVERFLOW			 34  //!< Stack overflow.
 
 /*! \ingroup CrashRptAPI  
  *  \brief Emulates a predefined crash situation.

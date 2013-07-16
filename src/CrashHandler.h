@@ -13,10 +13,12 @@ be found in the Authors.txt file in the root of the source tree.
 // Authors: mikecarruth, zexspectrum
 // Date: 2009
 
+//////////////////////////////////////////////////////////////////////////
 // @file    CrashHandler.h 
 // @author  ichenq@gmail.com 
 // @date    Jul, 2013
 // @brief  
+//////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
@@ -24,6 +26,8 @@ be found in the Authors.txt file in the root of the source tree.
 #include <stdlib.h>
 #include <new.h>
 #include <exception>
+#include "CrashRpt.h"
+#include "Utility.h"
 
 
 /* This structure contains pointer to the exception handlers for a process.*/
@@ -59,3 +63,30 @@ struct ProcessExceptHandlder
     void (*pfnSigsegvHandler)(int);           // Illegal storage access handler
     void (*pfnSigtermHandler)(int);           // Termination request handler
 };
+
+
+
+struct CurrentProcessCrashHandler
+{
+    // Avoid other threads (if exist) to crash while we are inside. 
+    CritcalSection          critsec;
+
+    // Previous process exception handlers
+    ProcessExceptHandlder   prevHandlers;
+
+    // Install information
+    CR_INSTALL_INFO         installInfo;
+
+    // Whether to terminate process (the default) or to continue execution after crash.
+    BOOL                    bContinueExecution;
+};
+
+
+CurrentProcessCrashHandler* GetCurrentProcessCrashHandler();
+
+#define LOCK_HANDLER()      GetCurrentProcessCrashHandler()->critsec.Lock()
+#define UNLOCK_HANDLER()    GetCurrentProcessCrashHandler()->critsec.Unlock()
+
+
+// Generates error report	
+int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo = NULL);

@@ -13,31 +13,22 @@ be found in the Authors.txt file in the root of the source tree.
 // Authors: mikecarruth, zexspectrum
 // Date: 
 
-// @file    CrashHandler.h 
+//////////////////////////////////////////////////////////////////////////
+// @file    CrashHandler.cpp 
 // @author  ichenq@gmail.com 
 // @date    Jul, 2013
 // @brief  
+//////////////////////////////////////////////////////////////////////////
 
 #include "CrashHandler.h"
-#include "CrashRpt.h"
 #include <signal.h>
 
-#ifndef _AddressOfReturnAddress
 
-// Taken from: http://msdn.microsoft.com/en-us/library/s975zw7k(VS.71).aspx
-#ifdef __cplusplus
-#define EXTERNC extern "C"
-#else
-#define EXTERNC
-#endif
-
-// _ReturnAddress and _AddressOfReturnAddress should be prototyped before use 
-EXTERNC void * _AddressOfReturnAddress(void);
-EXTERNC void * _ReturnAddress(void);
-
-#endif 
-
-
+CurrentProcessCrashHandler* GetCurrentProcessCrashHandler()
+{
+    static CurrentProcessCrashHandler instance;
+    return &instance;
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Exception handler functions. 
@@ -47,6 +38,29 @@ EXTERNC void * _ReturnAddress(void);
 static DWORD WINAPI StackOverflowThreadFunction(LPVOID lpParameter)
 {
     PEXCEPTION_POINTERS pExceptionPtrs = reinterpret_cast<PEXCEPTION_POINTERS>(lpParameter);
+
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
+
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Generate error report.
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_SEH_EXCEPTION;
+    ei.pexcptrs = pExceptionPtrs;
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
+
     return 0;
 }
 
@@ -69,6 +83,30 @@ static LONG WINAPI SehHandler(__in PEXCEPTION_POINTERS pExceptionPtrs)
         // Terminate process
         TerminateProcess(GetCurrentProcess(), 1);
     }
+    else
+    {
+        // Acquire lock to avoid other threads (if exist) to crash while we are inside
+        LOCK_HANDLER();
+
+        // Treat this type of crash critical by default
+        GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+        // Generate error report.
+        CR_EXCEPTION_INFO ei = {};
+        ei.cb = sizeof(CR_EXCEPTION_INFO);
+        ei.exctype = CR_SEH_EXCEPTION;
+        ei.pexcptrs = pExceptionPtrs;
+        GenerateErrorReport(&ei);
+
+        if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+        {
+            // Terminate process
+            TerminateProcess(GetCurrentProcess(), 1);
+        }
+
+        // We do not unlock, because process is to be terminated.
+        UNLOCK_HANDLER();
+    }
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -76,20 +114,81 @@ static LONG WINAPI SehHandler(__in PEXCEPTION_POINTERS pExceptionPtrs)
 // C++ terminate handler
 static void TerminateHandler()
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Generate error report.
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_TERMINATE_CALL;
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 
 // C++ unexpected handler
 static void UnexpectedHandler()
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_UNEXPECTED_CALL;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 
 #if _MSC_VER >= 1300
 // C++ pure virtual call handler
 static void PureCallHandler()
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_PURE_CALL;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 #endif 
 
@@ -97,19 +196,67 @@ static void PureCallHandler()
 // Buffer overrun handler (deprecated in newest versions of Visual C++).
 static void SecurityHandler(int code, void *x)
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_SECURITY_ERROR;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 #endif
 
 #if _MSC_VER >= 1400
 // C++ Invalid parameter handler.
 static void InvalidParameterHandler(const wchar_t* expression, 
-                                            const wchar_t* function, 
-                                            const wchar_t* file, 
-                                            unsigned int line, 
-                                            uintptr_t pReserved)
+                                    const wchar_t* function, 
+                                    const wchar_t* file, 
+                                    unsigned int line, 
+                                    uintptr_t pReserved)
 {
+    pReserved;
 
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
+
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_INVALID_PARAMETER;
+    ei.expression = expression;
+    ei.function = function;
+    ei.file = file;
+    ei.line = line; 
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 #endif
 
@@ -117,6 +264,30 @@ static void InvalidParameterHandler(const wchar_t* expression,
 // C++ new operator fault (memory exhaustion) handler
 static int NewHandler(size_t)
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
+
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_NEW_OPERATOR_ERROR;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
+
+    // Unreacheable code
     return 0;
 }
 #endif
@@ -124,32 +295,175 @@ static int NewHandler(size_t)
 // Signal handlers
 static void SigabrtHandler(int)
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_SIGABRT;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 
-static void SigfpeHandler(int, int)
+static void SigfpeHandler(int code, int subcode)
 {
+    code;
 
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
+
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_SIGFPE;
+    ei.pexcptrs = (PEXCEPTION_POINTERS)_pxcptinfoptrs;
+    ei.fpe_subcode = subcode;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 
 static void SigintHandler(int)
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_SIGINT;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 
 static void SigillHandler(int)
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_SIGILL;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 
 static void SigsegvHandler(int)
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_SIGSEGV;
+    ei.pexcptrs = (PEXCEPTION_POINTERS)_pxcptinfoptrs;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
 }
 
 static void SigtermHandler(int)
 {
+    // Acquire lock to avoid other threads (if exist) to crash while we are inside
+    LOCK_HANDLER();
 
+    // Treat this type of crash critical by default
+    GetCurrentProcessCrashHandler()->bContinueExecution = FALSE;
+
+    // Fill in the exception info
+    CR_EXCEPTION_INFO ei = {};
+    ei.cb = sizeof(CR_EXCEPTION_INFO);
+    ei.exctype = CR_CPP_SIGTERM;
+
+    // Generate crash report
+    GenerateErrorReport(&ei);
+
+    if(!GetCurrentProcessCrashHandler()->bContinueExecution)
+    {
+        // Terminate process
+        TerminateProcess(GetCurrentProcess(), 1);
+    }
+
+    // We do not unlock, because process is to be terminated.
+    UNLOCK_HANDLER();
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+static BOOL CreateMiniDump(EXCEPTION_POINTERS* ep)
+{
+    MINIDUMP_EXCEPTION_INFORMATION mei = {};
+    mei.ThreadId = ::GetCurrentThreadId();
+    mei.ExceptionPointers = ep;
+    mei.ClientPointers = TRUE;
+
+    //HANDLE hFile = ::CreateFile();
 }
 
 
@@ -273,4 +587,33 @@ int SetProcessExceptionHanlders(DWORD dwFlags)
     }
 
     return TRUE;
+}
+
+
+int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo /*= NULL*/)
+{
+    // Only handle first chance exception in current thread
+    static int excpt_chance = 0;
+    if (++excpt_chance == 2)
+    {
+        return 1;
+    }
+
+    SuspendOtherThreads();
+
+    // Allocate memory in stack for storing exception pointers.
+    EXCEPTION_RECORD ExceptionRecord;
+    CONTEXT ContextRecord;    
+    EXCEPTION_POINTERS ExceptionPointers;
+    ExceptionPointers.ExceptionRecord = &ExceptionRecord;
+    ExceptionPointers.ContextRecord = &ContextRecord; 
+
+    // Get exception pointers if they were not provided by the caller. 
+    if(pExceptionInfo->pexcptrs==NULL)
+    {
+        GetExceptionPointers(pExceptionInfo->code, &ExceptionPointers);
+        pExceptionInfo->pexcptrs = &ExceptionPointers;
+    }
+
+    return 0;
 }
