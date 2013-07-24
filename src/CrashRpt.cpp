@@ -28,6 +28,39 @@ be found in the Authors.txt file in the root of the source tree.
 #include <stdio.h>
 #include <signal.h>
 #include <eh.h>
+#include "CrashHandler.h"
+
+CRASHRPTAPI(int)
+crInstall()
+{
+    return 0;
+}
+
+CRASHRPTAPI(int)
+crUninstall()
+{
+    return 0;
+}
+
+CRASHRPTAPI(int) 
+crExceptionFilter(unsigned int code, struct _EXCEPTION_POINTERS* ep)
+{
+    CR_EXCEPTION_INFO ei;
+    memset(&ei, 0, sizeof(CR_EXCEPTION_INFO));
+    ei.cb = sizeof(CR_EXCEPTION_INFO);  
+    ei.exctype = CR_SEH_EXCEPTION;
+    ei.pexcptrs = ep;
+    ei.code = code;
+
+    int res = GenerateErrorReport(&ei);
+    if(res!=0)
+    {
+        // If goes here than GenerateErrorReport() failed  
+        return EXCEPTION_CONTINUE_SEARCH;  
+    }  
+
+    return EXCEPTION_EXECUTE_HANDLER;  
+}
 
 //-----------------------------------------------------------------------------------------------
 // Below crEmulateCrash() related stuff goes 

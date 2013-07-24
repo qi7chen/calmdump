@@ -22,7 +22,100 @@ be found in the Authors.txt file in the root of the source tree.
 
 #include "Utility.h"
 #include <Tlhelp32.h>
+#include <stdio.h>
+#include <assert.h>
 
+#pragma warning(disable: 4996)
+
+
+// Returns mudule name of the launched current process.
+std::string GetModuleName(HMODULE hModule)
+{
+    char szFileName[MAX_PATH];
+    GetModuleFileNameA(hModule, szFileName, _MAX_FNAME);
+    std::string sAppName = szFileName;
+    size_t start = sAppName.find_last_of('\\') + 1;
+    return sAppName.substr(start);
+}
+
+// Returns base name of the EXE file that launched current process.
+std::string GetAppName()
+{
+    const std::string& sAppName = GetModuleName(NULL);
+    size_t end = sAppName.find_last_of('.');
+    return sAppName.substr(0, end);
+}
+
+
+// Formats a string of file size
+std::string FileSizeToStr(ULONG64 uFileSize)
+{
+    char szSize[MAX_PATH];
+    if (uFileSize == 0)
+    {
+        return "0 KB";
+    }
+    else if (uFileSize < 1024)
+    {
+        float fSizeKbytes = (float)uFileSize / 1024.0f;
+        _snprintf(szSize, MAX_PATH, ("%0.1f KB"), fSizeKbytes);
+    }
+    else if (uFileSize < 1024*1024)
+    {
+        _snprintf(szSize, MAX_PATH, ("%I64u KB"), uFileSize/1024);
+    }
+    else
+    {
+        float fSizeMbytes = (float)uFileSize / (float)(1024*1024);
+        _snprintf(szSize, MAX_PATH, ("%0.1f MB"), fSizeMbytes);
+    }
+    return szSize;
+}
+
+// Description of calling thread's last error code
+std::string GetErrorMessage(DWORD dwError)
+{
+    char szbuffer[BUFSIZ];
+    DWORD dwLen = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, NULL,
+        dwError, 0, szbuffer, BUFSIZ-1, NULL);
+    if (dwLen == 0)
+    {
+        return ("?");
+    }
+    return std::string(szbuffer, dwLen);
+}
+
+// Write formatted log text to file
+void LogFileF(const char* file, const char* fmt, ...)
+{
+    assert(file && fmt);
+    char buffer[BUFSIZ];
+    va_list ap;
+    va_start(ap, fmt);
+    int count = _vsnprintf(buffer, BUFSIZ, fmt, ap);
+    va_end(ap);
+    if (count <= 0)
+    {
+        return ;
+    }
+    FILE* fp = fopen(file, "a+");
+    if (fp)
+    {
+        fwrite(buffer, sizeof(char), count, fp);
+        fclose(fp);
+    }
+}
+
+void LogFile(const char* file, const char* text, int len)
+{
+    assert(file && text);
+    FILE* fp = fopen(file, "a+");
+    if (fp)
+    {
+        fwrite(text, sizeof(char), len, fp);
+        fclose(fp);
+    }
+}
 
 
 #ifndef _AddressOfReturnAddress
@@ -94,34 +187,56 @@ void GetExceptionPointers(DWORD dwExceptionCode, EXCEPTION_POINTERS* pExceptionP
 }
 
 
-void SuspendOtherThreads()
+// ctor
+DbghlpDll::DbghlpDll()
+: DllHandle(("dbghelp.dll"))
 {
-    DWORD dwProcessId = ::GetCurrentProcessId();
-    DWORD dwThreadId = ::GetCurrentThreadId();
-    HANDLE hSnapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, dwProcessId);
-    if (hSnapshot == INVALID_HANDLE_VALUE)
+    if (handle_ && init())
     {
-        return ;
+        // turn on default options
+        DWORD dwOptions = this->SymGetOptions();
+        dwOptions |= SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_DEBUG;
+        this->SymSetOptions(dwOptions);
     }
-    
-    THREADENTRY32 entry = {};
-    entry.dwSize = sizeof(entry);
-    if (!::Thread32First(hSnapshot, &entry))
+    else
     {
-        ::CloseHandle(hSnapshot);
-        return ;
+        LOG_LAST_ERROR();
     }
-
-    do {
-        if (entry.th32OwnerProcessID == dwProcessId && entry.th32ThreadID != dwThreadId)
-        {
-            HANDLE hThread = ::OpenThread(THREAD_SUSPEND_RESUME, FALSE, entry.th32ThreadID);
-            if (hThread != NULL)
-            {
-                ::SuspendThread(hThread);
-            }
-        }
-    }while (::Thread32Next(hSnapshot, &entry));
-
-    CloseHandle(hSnapshot);
 }
+
+// dctor
+DbghlpDll::~DbghlpDll()
+{
+    this->SymCleanup(GetCurrentProcess());
+}
+
+BOOL DbghlpDll::init()
+{
+    SymGetOptions = (SymGetOptions_t)GetFuncAddress(("SymGetOptions"));
+    SymSetOptions = (SymSetOptions_t)GetFuncAddress(("SymSetOptions"));
+    SymInitialize = (SymInitialize_t)GetFuncAddress(("SymInitialize"));
+    SymCleanup = (SymCleanup_t)GetFuncAddress(("SymCleanup"));
+    StackWalk = (StackWalk_t)GetFuncAddress(("StackWalk"));
+    SymFromAddr = (SymFromAddr_t)GetFuncAddress(("SymFromAddr"));
+    SymFunctionTableAccess = (SymFunctionTableAccess_t)GetFuncAddress(("SymFunctionTableAccess"));
+    SymGetModuleBase = (SymGetModuleBase_t)GetFuncAddress(("SymGetModuleBase"));
+    SymGetLineFromAddr = (SymGetLineFromAddr_t)GetFuncAddress(("SymGetLineFromAddr"));
+    SymSetContext = (SymSetContext_t)GetFuncAddress(("SymSetContext"));
+    SymEnumSymbols = (SymEnumSymbols_t)GetFuncAddress(("SymEnumSymbols"));
+    SymGetTypeInfo = (SymGetTypeInfo_t)GetFuncAddress(("SymGetTypeInfo"));
+    EnumerateLoadedModules = (EnumerateLoadedModules_t)GetFuncAddress(("EnumerateLoadedModules"));
+    MiniDumpWriteDump = (MiniDumpWriteDump_t)GetFuncAddress(("MiniDumpWriteDump"));
+
+    return (SymGetOptions && SymSetOptions && SymInitialize && SymCleanup
+        && StackWalk && SymFromAddr && SymFunctionTableAccess && SymGetModuleBase
+        && SymGetLineFromAddr && SymSetContext && SymEnumSymbols
+        && SymGetTypeInfo && EnumerateLoadedModules && MiniDumpWriteDump);
+}
+
+// DbgHelp dll wrapper object
+DbghlpDll&  GetDbghelpDll()
+{
+    static DbghlpDll   instance;
+    return instance;
+}
+

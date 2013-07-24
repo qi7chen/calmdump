@@ -22,8 +22,14 @@ be found in the Authors.txt file in the root of the source tree.
 
 #include "CrashHandler.h"
 #include <signal.h>
+#include <time.h>
+#include "Report.h"
 
 
+#pragma warning(disable: 4996)
+
+
+// Get crash handlers of current process
 CurrentProcessCrashHandler* GetCurrentProcessCrashHandler()
 {
     static CurrentProcessCrashHandler instance;
@@ -31,6 +37,7 @@ CurrentProcessCrashHandler* GetCurrentProcessCrashHandler()
 }
 
 //////////////////////////////////////////////////////////////////////////
+//
 // Exception handler functions. 
 //
 
@@ -229,7 +236,7 @@ static void InvalidParameterHandler(const wchar_t* expression,
                                     unsigned int line, 
                                     uintptr_t pReserved)
 {
-    pReserved;
+    UNREFERENCED_PARAMETER(pReserved);
 
     // Acquire lock to avoid other threads (if exist) to crash while we are inside
     LOCK_HANDLER();
@@ -321,7 +328,7 @@ static void SigabrtHandler(int)
 
 static void SigfpeHandler(int code, int subcode)
 {
-    code;
+    UNREFERENCED_PARAMETER(code);
 
     // Acquire lock to avoid other threads (if exist) to crash while we are inside
     LOCK_HANDLER();
@@ -456,16 +463,69 @@ static void SigtermHandler(int)
 
 //////////////////////////////////////////////////////////////////////////
 
-static BOOL CreateMiniDump(EXCEPTION_POINTERS* ep)
+// Create Minidump file
+static bool CreateMiniDump(EXCEPTION_POINTERS* ep)
 {
     MINIDUMP_EXCEPTION_INFORMATION mei = {};
     mei.ThreadId = ::GetCurrentThreadId();
     mei.ExceptionPointers = ep;
     mei.ClientPointers = TRUE;
 
-    //HANDLE hFile = ::CreateFile();
+    // Make a name
+    char szFileName[MAX_PATH];    
+    const std::string& strModule = GetAppName();
+    time_t now = time(NULL);
+    tm thisDate = *localtime(&now);
+    _snprintf(szFileName, MAX_PATH, ("%s_%4d%02d%02d-%02d%02d%02d.dmp"), strModule.c_str(), 
+        thisDate.tm_year+1900, thisDate.tm_mon+1, thisDate.tm_mday, thisDate.tm_hour,
+        thisDate.tm_min, thisDate.tm_sec);
+
+    // Create Minidump file
+    HANDLE hFile = ::CreateFile(szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile != INVALID_HANDLE_VALUE)
+    {
+        GetDbghelpDll().MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
+            hFile, MiniDumpNormal, &mei, NULL, NULL);
+        CloseHandle(hFile);
+        return true;
+    }
+    else
+    {
+        LOG_LAST_ERROR();
+        return false;
+    }
 }
 
+
+int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo /*= NULL*/)
+{
+    // Only handle first chance exception in current thread
+    static int excpt_chance = 0;
+    if (++excpt_chance == 2)
+    {
+        return 1;
+    }
+
+    // Allocate memory in stack for storing exception pointers.
+    EXCEPTION_RECORD ExceptionRecord;
+    CONTEXT ContextRecord;    
+    EXCEPTION_POINTERS excptr;
+    excptr.ExceptionRecord = &ExceptionRecord;
+    excptr.ContextRecord = &ContextRecord; 
+
+    // Get exception pointers if they were not provided by the caller. 
+    if(pExceptionInfo->pexcptrs==NULL)
+    {
+        GetExceptionPointers(pExceptionInfo->code, &excptr);
+        pExceptionInfo->pexcptrs = &excptr;
+    }
+
+    CreateMiniDump(&excptr);
+    CreateReport(&excptr, "CrashReport.log");
+
+    return 0;
+}
 
 //////////////////////////////////////////////////////////////////////////
 int SetProcessExceptionHanlders(DWORD dwFlags)
@@ -589,31 +649,3 @@ int SetProcessExceptionHanlders(DWORD dwFlags)
     return TRUE;
 }
 
-
-int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo /*= NULL*/)
-{
-    // Only handle first chance exception in current thread
-    static int excpt_chance = 0;
-    if (++excpt_chance == 2)
-    {
-        return 1;
-    }
-
-    SuspendOtherThreads();
-
-    // Allocate memory in stack for storing exception pointers.
-    EXCEPTION_RECORD ExceptionRecord;
-    CONTEXT ContextRecord;    
-    EXCEPTION_POINTERS ExceptionPointers;
-    ExceptionPointers.ExceptionRecord = &ExceptionRecord;
-    ExceptionPointers.ContextRecord = &ContextRecord; 
-
-    // Get exception pointers if they were not provided by the caller. 
-    if(pExceptionInfo->pexcptrs==NULL)
-    {
-        GetExceptionPointers(pExceptionInfo->code, &ExceptionPointers);
-        pExceptionInfo->pexcptrs = &ExceptionPointers;
-    }
-
-    return 0;
-}

@@ -41,13 +41,13 @@
 // @file    CrashRpt.h 
 // @author  ichenq@gmail.com 
 // @date    Jul, 2013
-// @brief  
+// @brief   
 //////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <windows.h>
-#include <dbghelp.h>
+
 
 // Define SAL macros to be empty if some old Visual Studio used
 #ifndef __reserved
@@ -71,304 +71,42 @@
 
 #define CRASHRPTAPI(rettype) CRASHRPT_EXTERNC rettype WINAPI
 
-//! Current CrashRpt version
-#define CRASHRPT_VER 1210
-
-/*! \defgroup CrashRptAPI CrashRpt Functions */
-/*! \defgroup DeprecatedAPI Obsolete Functions */
-/*! \defgroup CrashRptStructs CrashRpt Structures */
-/*! \defgroup CrashRptWrappers CrashRpt Wrapper Classes */
-
-/*! \ingroup CrashRptAPI
- *  \brief Client crash callback function prototype
- *  \param[in] lpvState Currently not used, equals to NULL.
- *
- *  \remarks
- *
- *  The crash callback function is called when crash occurs. This way client application is
- *  notified about the crash.
- *
- *  It is generally unsafe to do complex actions (e.g. memory allocation, heap operations) inside of this callback.
- *  The application state may be unstable.
- *
- *  One reason the application may use this callback for is to close handles to open log files that the 
- *  application plans to include into the error report. Log files should be accessible for reading, otherwise
- *  CrashRpt won't be able to include them into error report.
- *  
- *  The crash callback function should typically return \c TRUE to allow generate error report.  
- *  Returning \c FALSE will prevent crash report generation.
- *
- *  The following example shows how to use the crash callback function.
- *
- *  \code
- *  // define the crash callback
- *  BOOL CALLBACK CrashCallback(LPVOID lpvState)
- *  {    
- *    // Do something...
- *
- *    return TRUE;
- *  }
- *  \endcode
- *
- *  \sa crAddFile2()
- */
-typedef BOOL (CALLBACK *LPGETLOGFILE) (__reserved LPVOID lpvState);
-
-
-// Array indices for CR_INSTALL_INFO::uPriorities.
-#define CR_HTTP 0  //!< Send error report via HTTP (or HTTPS) connection.
-#define CR_SMTP 1  //!< Send error report via SMTP connection.
-#define CR_SMAPI 2 //!< Send error report via simple MAPI (using default mail client).
-
-//! Special priority constant that allows to skip certain delivery method.
-#define CR_NEGATIVE_PRIORITY ((UINT)-1)
 
 // Flags for CR_INSTALL_INFO::dwFlags
-#define CR_INST_STRUCTURED_EXCEPTION_HANDLER   0x1    //!< Install SEH handler (deprecated name, use \ref CR_INST_SEH_EXCEPTION_HANDLER instead).
-#define CR_INST_SEH_EXCEPTION_HANDLER          0x1    //!< Install SEH handler.
-#define CR_INST_TERMINATE_HANDLER              0x2    //!< Install terminate handler.
-#define CR_INST_UNEXPECTED_HANDLER             0x4    //!< Install unexpected handler.
-#define CR_INST_PURE_CALL_HANDLER              0x8    //!< Install pure call handler (VS .NET and later).
-#define CR_INST_NEW_OPERATOR_ERROR_HANDLER     0x10   //!< Install new operator error handler (VS .NET and later).
-#define CR_INST_SECURITY_ERROR_HANDLER         0x20   //!< Install security error handler (VS .NET and later).
-#define CR_INST_INVALID_PARAMETER_HANDLER      0x40   //!< Install invalid parameter handler (VS 2005 and later).
-#define CR_INST_SIGABRT_HANDLER                0x80   //!< Install SIGABRT signal handler.
-#define CR_INST_SIGFPE_HANDLER                 0x100  //!< Install SIGFPE signal handler.   
-#define CR_INST_SIGILL_HANDLER                 0x200  //!< Install SIGILL signal handler.  
-#define CR_INST_SIGINT_HANDLER                 0x400  //!< Install SIGINT signal handler.  
-#define CR_INST_SIGSEGV_HANDLER                0x800  //!< Install SIGSEGV signal handler.
+#define CR_INST_STRUCTURED_EXCEPTION_HANDLER      0x1 //!< Install SEH handler (deprecated name, use \ref CR_INST_SEH_EXCEPTION_HANDLER instead).
+#define CR_INST_SEH_EXCEPTION_HANDLER             0x1 //!< Install SEH handler.
+#define CR_INST_TERMINATE_HANDLER                 0x2 //!< Install terminate handler.
+#define CR_INST_UNEXPECTED_HANDLER                0x4 //!< Install unexpected handler.
+#define CR_INST_PURE_CALL_HANDLER                 0x8 //!< Install pure call handler (VS .NET and later).
+#define CR_INST_NEW_OPERATOR_ERROR_HANDLER       0x10 //!< Install new operator error handler (VS .NET and later).
+#define CR_INST_SECURITY_ERROR_HANDLER           0x20 //!< Install security error handler (VS .NET and later).
+#define CR_INST_INVALID_PARAMETER_HANDLER        0x40 //!< Install invalid parameter handler (VS 2005 and later).
+#define CR_INST_SIGABRT_HANDLER                  0x80 //!< Install SIGABRT signal handler.
+#define CR_INST_SIGFPE_HANDLER                  0x100 //!< Install SIGFPE signal handler.   
+#define CR_INST_SIGILL_HANDLER                  0x200 //!< Install SIGILL signal handler.  
+#define CR_INST_SIGINT_HANDLER                  0x400 //!< Install SIGINT signal handler.  
+#define CR_INST_SIGSEGV_HANDLER                 0x800 //!< Install SIGSEGV signal handler.
 #define CR_INST_SIGTERM_HANDLER                0x1000 //!< Install SIGTERM signal handler.  
 
-#define CR_INST_ALL_POSSIBLE_HANDLERS          0       //!< Install all possible exception handlers.
-#define CR_INST_CRT_EXCEPTION_HANDLERS         0x1FFE  //!< Install exception handlers for the linked CRT module.
+#define CR_INST_ALL_POSSIBLE_HANDLERS          0x1FFF //!< Install all possible exception handlers.
+#define CR_INST_CRT_EXCEPTION_HANDLERS         0x1FFE //!< Install exception handlers for the linked CRT module.
 
-
-/*! \ingroup CrashRptStructs
- *  \struct CR_INSTALL_INFO()
- *  \brief This structure defines the general information used by crInstall()
- *
- *  \remarks
- *
- *
- *    \b cb [in, required] 
- *
- *    This must contain the size of this structure in bytes. 
- *
- *    \b pszAppName [in, optional] 
- *
- *       This is the friendly name of the client application. The application name is
- *       displayed in the Error Report dialog. If this parameter is NULL, the name of EXE file 
- *       that was used to start caller process becomes the application name.
- *
- *    \b pszAppVersion [in, optional] 
- *
- *       Should be the application version. Example: "1.0.1". 
- *
- *       If this equals to NULL, product version is extracted from the executable file which started 
- *       the caller process, and this product version is used as application version. If the executable file
- *       doesn's have a version info resource, the \ref crInstall() function will fail.
- * 
- *    \b pszEmailTo [in, optional] 
- *
- *       This is the email address of the recipient of error reports, for example
- *       "name@example.com". If this equals to NULL, the crash report won't be sent using E-mail client.
- *
- *       Keep this NULL if you plan to use large error reports (more than several MB in size), because
- *       large emails may be rejected by the mail server. 
- *
- *       To define a custom port for SMTP connection, use the following address format: "user@example.com:port",
- *       where \a port is the placeholder for the port number. 
- *
- *    \b pszEmailSubject [in, optional] 
- *
- *       This is the subject of the email message. If this parameter is NULL,
- *       the default subject of form '[app_name] [app_version] Error Report' is generated.
- *
- *    \a pszUrl is the URL of a server-side script that would receive crash report data via HTTP or HTTPS 
- *       connection. If this parmeter is NULL, HTTP(S) connection won't be used to send crash reports. For
- *       example of a server-side script that can receive crash reports, see \ref sending_error_reports.
- *
- *       HTTP(S) transport is the recommended way of sending large error reports (more than several MB in size).
- *       To define a custom port for HTTP(S) connection, use the following URL format: "http://example.com[:port]/crashrpt.php" or
- *       "https://example.com[:port]/crashrpt.php", where optional \a port is the placeholder for the port number.
- *
- *    \b pszCrashSenderPath [in, optional] 
- *
- *       This is the absolute path to the directory where CrashSender.exe is located. 
- *       The crash sender process is responsible for letting end user know about the crash and 
- *       sending the error report. If this is NULL, it is assumed that CrashSender.exe is located in
- *       the same directory as CrashRpt.dll.
- *
- *    \b pfnCrashCallback [in, optional] 
- *
- *       This can be a pointer to the \ref LPGETLOGFILE() crash callback function. The crash callback function is
- *       called by CrashRpt when crash occurs and allows user to be notified.
- *       If this is NULL, crash callback function is not called.
- *
- *    \b uPriorities [in, optional]
- *
- *       This is an array that defines the preferred methods of sending error reports. 
- *       The available methods are: HTTP (or HTTPS) connection, SMTP connection or simple MAPI (default mail client).
- *
- *       A priority is a non-negative integer number or special constant \ref CR_NEGATIVE_PRIORITY. 
- *       The greater positive number defines the greater priority. 
- *       Specify the \ref CR_NEGATIVE_PRIORITY to skip the given way.
- *
- *       The element having index \ref CR_HTTP defines priority for using HTML connection.
- *       The element having index \ref CR_SMTP defines priority for using SMTP connection.
- *       The element having index \ref CR_SMAPI defines priority for using the default mail client.
- *
- *       The methods having greater priority will be tried first. If priorities are equal to each other, HTTP (or HTTPS)
- *       connection will be tried the first, SMTP connection will be tried the second and simple MAPI will be tried
- *       the last. 
- *
- *    \b dwFlags [in, optional]
- *
- *    Since v1.1.2, \a dwFlags can be used to define behavior parameters. This can be a combination of the following values:
- *
- *    <table>
- *    <tr><td colspan="2"> <i>Use the combination of the following constants to specify what exception handlers to install:</i>
- *    <tr><td> \ref CR_INST_ALL_EXCEPTION_HANDLERS    <td> Install all available exception handlers.
- *    <tr><td> \ref CR_INST_SEH_EXCEPTION_HANDLER     <td> Install SEH exception handler.
- *    <tr><td> \ref CR_INST_PURE_CALL_HANDLER         <td> Install pure call handler (VS .NET and later).
- *    <tr><td> \ref CR_INST_NEW_OPERATOR_ERROR_HANDLER <td> Install new operator error handler (VS .NET and later).
- *    <tr><td> \ref CR_INST_SECURITY_ERROR_HANDLER     <td> Install security errror handler (VS .NET and later).
- *    <tr><td> \ref CR_INST_INVALID_PARAMETER_HANDLER  <td> Install invalid parameter handler (VS 2005 and later).
- *    <tr><td> \ref CR_INST_SIGABRT_HANDLER            <td> Install SIGABRT signal handler.
- *    <tr><td> \ref CR_INST_SIGINT_HANDLER             <td> Install SIGINT signal handler.  
- *    <tr><td> \ref CR_INST_SIGTERM_HANDLER            <td> Install SIGTERM signal handler.  
- *    <tr><td colspan="2"> <i>Use the combination of the following constants to define behavior parameters:</i>
- *    <tr><td> \ref CR_INST_NO_GUI                
- *        <td> <b>Available since v.1.2.2</b> Do not show GUI.
- * 
- *             It is not recommended to use this flag for regular GUI-based applications. 
- *             Use this only for services that have no GUI.
- *    <tr><td> \ref CR_INST_HTTP_BINARY_ENCODING     
- *        <td> <b>Available since v.1.2.2</b> This affects the way of sending reports over HTTP. 
- *             By specifying this flag, you enable usage of multi-part HTTP uploads with binary encoding instead 
- *             of the legacy way (Base64-encoded form data). 
- *
- *             It is recommended to always specify this flag, because it is more suitable for large error reports. The legacy way
- *             is supported for backwards compatibility and not recommended to use.
- *             For additional information, see \ref sending_error_reports.
- *    <tr><td> \ref CR_INST_DONT_SEND_REPORT     
- *        <td> <b>Available since v.1.2.2</b> This parameter means 'do not send error report immediately on crash, just save it locally'. 
- *             Use this if you have direct access to the machine where crash happens and do not need 
- *             to send report over the Internet. You can use this in couple with \ref CR_INST_STORE_ZIP_ARCHIVES flag to store zipped error reports
- *             along with uncompressed error report files.
- *    <tr><td> \ref CR_INST_APP_RESTART     
- *        <td> <b>Available since v.1.2.4</b> This parameter allows to automatically restart the application on crash. The command line
- *             for the application is taken from \a pszRestartCmdLine parameter. To avoid cyclic restarts of an application which crashes on startup, 
- *             the application is restarted only if at least 60 seconds elapsed since its start.
- *    <tr><td> \ref CR_INST_NO_MINIDUMP     
- *        <td> <b>Available since v.1.2.4</b> Specify this parameter if you want minidump file not to be included into crash report. The default
- *             behavior is to include the minidump file.
- *
- *    <tr><td> \ref CR_INST_SEND_QUEUED_REPORTS     
- *        <td> <b>Available since v.1.2.5</b> Specify this parameter to send all queued reports. Those
- *             report files are by default stored in <i>%LOCAL_APPDATA%\\CrashRpt\\UnsentCrashReports\\%AppName%_%AppVersion%</i> folder.
- *             If this is specified, CrashRpt checks if it's time to remind user about recent errors in the application and offers to send
- *             all queued error reports.
- *
- *    <tr><td> \ref CR_INST_STORE_ZIP_ARCHIVES     
- *        <td> <b>Available since v.1.2.7</b> This parameter can be used in couple with \ref CR_INST_DONT_SEND_REPORT flag to store not only uncompressed
- *             error report files, but also ZIP archives. By default (if this flag omitted) CrashRpt stores all error report files
- *             in uncompressed state.
- *
- *   </table>
- *
- *   \b pszPrivacyPolicyURL [in, optional] 
- *
- *     Since v1.1.2, this defines the URL for the Privacy Policy hyperlink of the 
- *     Error Report dialog. If this parameter is NULL, the link is not displayed. For information on 
- *     the Privacy Policy, see \ref error_report.
- *
- *   \b pszDebugHelpDLL [in, optional] 
- *  
- *     Since v1.2.1, this parameter defines the location of the dbghelp.dll to load. 
- *     If this parameter is NULL, the dbghelp.dll is searched using the default search sequence.
- *
- *   \b uMiniDumpType [in, optional] 
- *
- *     Since v.1.2.1, this parameter defines the minidump type. For the list of available minidump
- *     types, see the documentation for the MiniDumpWriteDump() function in MSDN. 
- 
- *     It is recommended to set this 
- *     parameter with zero (equivalent of MiniDumpNormal constant). Other values may increase the minidump size significantly.
- *     If you plan to use values other than zero, also specify the \ref CR_INST_HTTP_BINARY_ENCODING flag for \a dwFlags parameter.
- *
- *   \b pszErrorReportSaveDir [in, optional] 
- *
- *     Since v.1.2.2, this parameter defines the directory where to save the error reports. 
- *     If this is NULL, the default directory is used (%%LOCAL_APP_DATA%\\CrashRpt\\UnsentCrashReports\\%%AppName%%_%%AppVersion%).
- *
- *   \b pszRestartCmdLine [in, optional] 
- *
- *     Since v.1.2.4, parameter defines the string that specifies the 
- *     command-line arguments for the application when it is restarted (when using \ref CR_INST_APP_RESTART flag). Do not include the name of 
- *     the executable in the command line; it is added automatically. This parameter can be NULL.
- *
- *   \b pszLangFilePath [in, optional]
- *
- *     Since v.1.2.4, this parameter defines the absolute path (including file name) for language file.
- *     If this is NULL, the lang file is assumed to be located in the same dir as CrashSender.exe file and have the name crashrpt_lang.ini.
- * 
- *   \b pszEmailText [in, optional]
- *
- *     Since v.1.2.4, this parameter defines the custom E-mail text that is used when deliverying error report
- *     as E-mail. If this is NULL, the default E-mail text is used. It is recommended to set this parameter with NULL.
- *  
- *   \b pszSmtpProxy [in, optional] 
- *
- *     Since v.1.2.4, this parameter defines the network address and port formatted as "IP:port" to use as SMTP proxy. Example: "192.168.1.1:2525".
- *     If this is NULL, the SMTP server address is resolved using the MX record of sender's or recipient's mailbox. You should typically set this parameter with NULL, except in the
- *     case when your software is a server and custom SMTP configuration is required.
- *  
- *   \b pszCustomSenderIcon [in, optional] 
- *
- *   Since v.1.2.8, this parameter can be used to define a custom icon for <i>Error Report</i> dialog. 
- *   The value of this parameter should be absolute address to the image containing the icon resource, followed by resource identifier separated by comma.
- *   You can set this parameter with NULL to use the default icon.
- *
- *   The resource identifier is a zero-based index of the icon to retrieve. For example, if this value is 0, the first icon in the specified file is used.
- *   If the identifier is a negative number not equal to -1, the icon in the specified file whose resource identifier is equal to the absolute value of the resource identifier is used.
- *   Example: "D:\MyApp\Resources.dll, -128". 
- *  
- *        
- */
-
-typedef struct tagCR_INSTALL_INFO
-{
-  WORD cb;                       //!< Size of this structure in bytes; must be initialized before using!
-  LPCSTR pszAppName;             //!< Name of application.
-  LPCSTR pszAppVersion;          //!< Application version.
-  LPCSTR pszEmailTo;             //!< E-mail address of crash reports recipient.
-  LPCSTR pszEmailSubject;        //!< Subject of crash report e-mail. 
-  LPCSTR pszUrl;                 //!< URL of server-side script (used in HTTP connection).
-  LPCSTR pszCrashSenderPath;     //!< Directory name where CrashSender.exe is located.
-  LPGETLOGFILE pfnCrashCallback; //!< User crash callback.
-  UINT uPriorities[3];           //!< Array of error sending transport priorities.
-  DWORD dwFlags;                 //!< Flags.
-  LPCSTR pszPrivacyPolicyURL;    //!< URL of privacy policy agreement.
-  LPCSTR pszDebugHelpDLL;        //!< File name or folder of Debug help DLL.
-  MINIDUMP_TYPE uMiniDumpType;   //!< Mini dump type.
-  LPCSTR pszErrorReportSaveDir;  //!< Directory where to save error reports.
-  LPCSTR pszRestartCmdLine;      //!< Command line for application restart (without executable name).
-  LPCSTR pszLangFilePath;        //!< Path to the language file (including file name).
-  LPCSTR pszEmailText;           //!< Custom E-mail text (used when deliverying report as E-mail).
-  LPCSTR pszSmtpProxy;           //!< Network address and port to be used as SMTP proxy.
-  LPCSTR pszCustomSenderIcon;    //!< Custom icon used for Error Report dialog.
-}
-CR_INSTALL_INFO;
-
-typedef CR_INSTALL_INFO *PCR_INSTALL_INFO;
-
+#define CR_INST_NO_GUI                         0x2000 //!< Do not show GUI, send report silently (use for non-GUI apps only).
+#define CR_INST_HTTP_BINARY_ENCODING           0x4000 //!< Deprecated, do not use.
+#define CR_INST_DONT_SEND_REPORT               0x8000 //!< Don't send error report immediately, just save it locally.
+#define CR_INST_APP_RESTART                   0x10000 //!< Restart the application on crash.
+#define CR_INST_NO_MINIDUMP                   0x20000 //!< Do not include minidump file to crash report.
+#define CR_INST_SEND_QUEUED_REPORTS           0x40000 //!< CrashRpt should send error reports that are waiting to be delivered.
+#define CR_INST_STORE_ZIP_ARCHIVES            0x80000 //!< CrashRpt should store both uncompressed error report files and ZIP archives.
+#define CR_INST_SEND_MANDATORY				 0x100000 //!< This flag removes the "Close" and "Other actions" buttons from Error Report dialog, thus making the sending procedure mandatory for user.
+#define CR_INST_SHOW_ADDITIONAL_INFO_FIELDS	 0x200000 //!< Makes "Your E-mail" and "Describe what you were doing when the problem occurred" fields of Error Report dialog always visible.
+#define CR_INST_ALLOW_ATTACH_MORE_FILES		 0x400000 //!< Adds an ability for user to attach more files to crash report by clicking "Attach More File(s)" item from context menu of Error Report Details dialog.
+#define CR_INST_AUTO_THREAD_HANDLERS         0x800000 //!< If this flag is set, installs exception handlers for newly created threads automatically.
 
 
 /*! \ingroup CrashRptAPI 
  *  \brief  Installs exception handlers for the caller process.
  *
- *  \param[in] pInfo General information.
  *
  *  \remarks
  *    This function installs unhandled exception filter for the caller process.
@@ -388,44 +126,10 @@ typedef CR_INSTALL_INFO *PCR_INSTALL_INFO;
  *    In a multithreaded program, additionally use crInstallToCurrentThread2() function for each execution
  *    thread, except the main one.
  * 
- *    The \a pInfo parameter contains all required information needed to install CrashRpt.
- *
- *    This function fails when \a pInfo->pszCrashSenderPath doesn't contain valid path to CrashSender.exe
- *    or when \a pInfo->pszCrashSenderPath is equal to NULL, but \b CrashSender.exe is not located in the
- *    directory where \b CrashRpt.dll located.
- *
- *    On crash, the crash minidump file is created, which contains CPU information and 
- *    stack trace information. Also XML file is created that contains additional 
- *    information that may be helpful for crash analysis. These files along with several additional
- *    files added with crAddFile2() are packed to a single ZIP file.
- *
- *    When crash information is collected, another process, <b>CrashSender.exe</b>, is launched 
- *    and the process where crash had occured is terminated. The CrashSender process is 
- *    responsible for letting the user know about the crash and send the error report.
- * 
- *    The error report can be sent over E-mail using address and subject passed to the
- *    function as \ref CR_INSTALL_INFO structure members. Another way of sending error report is an HTTP 
- *    request using \a pszUrl member of \ref CR_INSTALL_INFO. 
- *
- *    This function may fail if an appropriate language file (\b crashrpt_lang.ini) is not found 
- *    in the directory where the \b CrashSender.exe file is located.
- *
- *    If this function fails, use crGetLastErrorMsg() to retrieve the error message.
- *
- *    crInstallW() and crInstallA() are wide-character and multi-byte character versions of crInstall()
- *    function. The \ref crInstall macro defines character set independent mapping for these functions.
- *
- *    For code example, see \ref simple_example.
- *
- *  \sa crInstallW(), crInstallA(), crInstall(), CR_INSTALL_INFOW, 
- *      CR_INSTALL_INFOA, CR_INSTALL_INFO, crUninstall(), 
- *      CrAutoInstallHelper
  */
 
 CRASHRPTAPI(int)
-crInstall(
-  __in PCR_INSTALL_INFO pInfo
-);
+crInstall();
 
 
 /*! \ingroup CrashRptAPI 
@@ -452,6 +156,77 @@ crInstall(
 CRASHRPTAPI(int)
 crUninstall();
 
+
+/*! \ingroup CrashRptAPI
+*  \brief Installs exception handlers to the caller thread.
+*  \return This function returns zero if succeeded.
+*  \param[in] dwFlags Flags.
+*
+*  \remarks
+*
+*  This function is available <b>since v.1.1.2</b>.
+*
+*  The function sets exception handlers for the caller thread. If you have
+*  several execution threads, you ought to call the function for each thread,
+*  except the main one.
+*   
+*  \a dwFlags defines what exception handlers to install. Use zero value
+*  to install all possible exception handlers. Or use a combination of the following constants:
+*
+*      - \ref CR_INST_TERMINATE_HANDLER              Install terminate handler
+*      - \ref CR_INST_UNEXPECTED_HANDLER             Install unexpected handler
+*      - \ref CR_INST_SIGFPE_HANDLER                 Install SIGFPE signal handler   
+*      - \ref CR_INST_SIGILL_HANDLER                 Install SIGILL signal handler  
+*      - \ref CR_INST_SIGSEGV_HANDLER                Install SIGSEGV signal handler 
+* 
+*  Example:
+*
+*   \code
+*   DWORD WINAPI ThreadProc(LPVOID lpParam)
+*   {
+*     // Install exception handlers
+*     crInstallToCurrentThread2(0);
+*
+*     // Your code...
+*
+*     // Uninstall exception handlers
+*     crUninstallFromCurrentThread();
+*    
+*     return 0;
+*   }
+*   \endcode
+* 
+*  \sa 
+*    crInstall()
+*/
+
+CRASHRPTAPI(int)
+crInstallToCurrentThread2(DWORD dwFlags);
+
+/*! \ingroup CrashRptAPI  
+*  \brief Uninstalls C++ exception handlers from the current thread.
+*  \return This function returns zero if succeeded.
+*  
+*  \remarks
+*
+*    This function unsets exception handlers from the caller thread. If you have
+*    several execution threads, you ought to call the function for each thread.
+*    After calling this function, the exception handlers for current thread are
+*    replaced with the handlers that were before call of crInstallToCurrentThread2().
+*
+*    This function fails if crInstallToCurrentThread2() wasn't called for current thread.
+*
+*    When this function fails, use crGetLastErrorMsg() to retrieve the error message.
+*
+*    No need to call this function for the main execution thread. The crUninstall()
+*    will automatically uninstall C++ exception handlers for the main thread.
+*
+*   \sa crInstallToCurrentThread2(),
+*       crUninstallFromCurrentThread(), CrThreadAutoInstallHelper
+*/
+
+CRASHRPTAPI(int)
+crUninstallFromCurrentThread();
 
 // Exception types
 #define CR_WIN32_STRUCTURED_EXCEPTION   0    //!< SEH exception (deprecated name, use \ref CR_SEH_EXCEPTION instead).
@@ -550,55 +325,6 @@ typedef struct tagCR_EXCEPTION_INFO
 CR_EXCEPTION_INFO;
 
 typedef CR_EXCEPTION_INFO *PCR_EXCEPTION_INFO;
-
-/*! \ingroup CrashRptAPI  
- *  \brief Manually generates an errror report.
- *
- *  \return This function returns zero if succeeded. When failed, it returns a non-zero value.
- *     Use crGetLastErrorMsg() to retrieve the error message.
- *  
- *  \param[in] pExceptionInfo Exception information. 
- *
- *  \remarks
- *
- *    Call this function to manually generate a crash report. When crash information is collected,
- *    control is returned to the caller. The crGenerateErrorReport() doesn't terminate the caller process.
- *
- *    The crash report contains crash minidump, crash description in XML format and
- *    additional custom files added with crAddFile2().
- *
- *    The exception information should be passed using \ref CR_EXCEPTION_INFO structure. 
- *
- *    The following example shows how to use crGenerateErrorReport() function.
- *
- *    \code
- *    CR_EXCEPTION_INFO ei;
- *    memset(&ei, 0, sizeof(CR_EXCEPTION_INFO));
- *    ei.cb = sizeof(CR_EXCEPTION_INFO);
- *    ei.exctype = CR_SEH_EXCEPTION;
- *    ei.code = 1234;
- *    ei.pexcptrs = NULL;
- *
- *    int result = crGenerateErrorReport(&ei);
- *
- *    if(result!=0)
- *    {
- *      // If goes here, crGenerateErrorReport() has failed
- *      // Get the last error message
- *      TCHAR szErrorMsg[256];
- *      crGetLastErrorMsg(szErrorMsg, 256);
- *    }
- *   
- *    // Manually terminate program
- *    ExitProcess(0);
- *
- *    \endcode
- */
-
-CRASHRPTAPI(int)
-crGenerateErrorReport(   
-   __in_opt CR_EXCEPTION_INFO* pExceptionInfo
-   );
 
 
 /*! \ingroup DeprecatedAPI 
@@ -708,48 +434,6 @@ crEmulateCrash(
 
 
 
-/*! \ingroup CrashRptAPI 
- *  \brief Gets the last CrashRpt error message.
- *
- *  \return This function returns length of error message in characters. If output buffer is invalid, returns a negative number.
- *
- *  \param[out] pszBuffer Pointer to the buffer.
- *  \param[in]  uBuffSize Size of buffer in characters.
- *
- *  \remarks
- *
- *    This function gets the last CrashRpt error message. You can use this function
- *    to retrieve the text status of the last called CrashRpt function.
- *
- *    If buffer is too small for the error message, the message is truncated.
- *
- *  crGetLastErrorMsgW() and crGetLastErrorMsgA() are wide-character and multi-byte character versions
- *  of crGetLastErrorMsg(). The crGetLastErrorMsg() macro defines character set independent mapping.
- *
- *  The following example shows how to use crGetLastErrorMsg() function.
- *
- *  \code
- *  
- *  // .. call some CrashRpt function
- *
- *  // Get the status message
- *  TCHAR szErrorMsg[256];
- *  crGetLastErrorMsg(szErrorMsg, 256);
- *  \endcode
- *
- *  \sa crGetLastErrorMsgA(), crGetLastErrorMsgW(), crGetLastErrorMsg()
- */
-
-CRASHRPTAPI(int)
-crGetLastErrorMsg(
-  __out_ecount_z(uBuffSize) LPSTR pszBuffer, 
-  UINT uBuffSize);
-
-/*! \brief Defines character set-independent mapping for crGetLastErrorMsgW() and crGetLastErrorMsgA().
- *  \ingroup CrashRptAPI
- */
-
-
 
 //// Helper wrapper classes
 
@@ -774,9 +458,9 @@ class CrAutoInstallHelper
 public:
 
   //! Installs exception handlers to the caller process
-  CrAutoInstallHelper(__in PCR_INSTALL_INFO pInfo)
+  CrAutoInstallHelper()
   {
-    m_nInstallStatus = crInstall(pInfo);
+    m_nInstallStatus = crInstall();
   }
 
 

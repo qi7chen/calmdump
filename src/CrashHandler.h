@@ -74,9 +74,6 @@ struct CurrentProcessCrashHandler
     // Previous process exception handlers
     ProcessExceptHandlder   prevHandlers;
 
-    // Install information
-    CR_INSTALL_INFO         installInfo;
-
     // Whether to terminate process (the default) or to continue execution after crash.
     BOOL                    bContinueExecution;
 };
@@ -87,6 +84,5 @@ CurrentProcessCrashHandler* GetCurrentProcessCrashHandler();
 #define LOCK_HANDLER()      GetCurrentProcessCrashHandler()->critsec.Lock()
 #define UNLOCK_HANDLER()    GetCurrentProcessCrashHandler()->critsec.Unlock()
 
-
 // Generates error report	
-int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo = NULL);
+int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo);
