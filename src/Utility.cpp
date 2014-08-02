@@ -20,10 +20,13 @@ be found in the Authors.txt file in the root of the source tree.
 // @brief  
 //////////////////////////////////////////////////////////////////////////
 
+
 #include "Utility.h"
 #include <Tlhelp32.h>
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+
 
 #pragma warning(disable: 4996)
 
@@ -86,33 +89,31 @@ std::string GetErrorMessage(DWORD dwError)
 }
 
 // Write formatted log text to file
-void LogFileF(const char* file, const char* fmt, ...)
+void LogModuleFile(const char* module, const char* fmt, ...)
 {
-    assert(file && fmt);
-    char buffer[BUFSIZ];
+    assert(module && fmt);
+    time_t now = time(NULL);
+    tm date = *localtime(&now);
+    char filename[256];
+    int r = _snprintf(filename, 256, "%s_%d-%d-%d.log", module, date.tm_year + 1900,
+        date.tm_mon+1, date.tm_mday);
+    if (r <= 0)
+    {
+        return;
+    }
+    char buffer[512];
     va_list ap;
     va_start(ap, fmt);
-    int count = _vsnprintf(buffer, BUFSIZ, fmt, ap);
+    r = vsnprintf(buffer, 512, fmt, ap);
     va_end(ap);
-    if (count <= 0)
+    if (r <= 0)
     {
-        return ;
+        return;
     }
-    FILE* fp = fopen(file, "a+");
+    FILE* fp = fopen(filename, "a+");
     if (fp)
     {
-        fwrite(buffer, sizeof(char), count, fp);
-        fclose(fp);
-    }
-}
-
-void LogFile(const char* file, const char* text, int len)
-{
-    assert(file && text);
-    FILE* fp = fopen(file, "a+");
-    if (fp)
-    {
-        fwrite(text, sizeof(char), len, fp);
+        fwrite(buffer, 1, r, fp);
         fclose(fp);
     }
 }
@@ -185,58 +186,3 @@ void GetExceptionPointers(DWORD dwExceptionCode, EXCEPTION_POINTERS* pExceptionP
     pExceptionPointers->ExceptionRecord->ExceptionCode = dwExceptionCode;
     pExceptionPointers->ExceptionRecord->ExceptionAddress = _ReturnAddress();   
 }
-
-
-// ctor
-DbghlpDll::DbghlpDll()
-: DllHandle(("dbghelp.dll"))
-{
-    if (handle_ && init())
-    {
-        // turn on default options
-        DWORD dwOptions = this->SymGetOptions();
-        dwOptions |= SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_DEBUG;
-        this->SymSetOptions(dwOptions);
-    }
-    else
-    {
-        LOG_LAST_ERROR();
-    }
-}
-
-// dctor
-DbghlpDll::~DbghlpDll()
-{
-    this->SymCleanup(GetCurrentProcess());
-}
-
-BOOL DbghlpDll::init()
-{
-    SymGetOptions = (SymGetOptions_t)GetFuncAddress(("SymGetOptions"));
-    SymSetOptions = (SymSetOptions_t)GetFuncAddress(("SymSetOptions"));
-    SymInitialize = (SymInitialize_t)GetFuncAddress(("SymInitialize"));
-    SymCleanup = (SymCleanup_t)GetFuncAddress(("SymCleanup"));
-    StackWalk = (StackWalk_t)GetFuncAddress(("StackWalk"));
-    SymFromAddr = (SymFromAddr_t)GetFuncAddress(("SymFromAddr"));
-    SymFunctionTableAccess = (SymFunctionTableAccess_t)GetFuncAddress(("SymFunctionTableAccess"));
-    SymGetModuleBase = (SymGetModuleBase_t)GetFuncAddress(("SymGetModuleBase"));
-    SymGetLineFromAddr = (SymGetLineFromAddr_t)GetFuncAddress(("SymGetLineFromAddr"));
-    SymSetContext = (SymSetContext_t)GetFuncAddress(("SymSetContext"));
-    SymEnumSymbols = (SymEnumSymbols_t)GetFuncAddress(("SymEnumSymbols"));
-    SymGetTypeInfo = (SymGetTypeInfo_t)GetFuncAddress(("SymGetTypeInfo"));
-    EnumerateLoadedModules = (EnumerateLoadedModules_t)GetFuncAddress(("EnumerateLoadedModules"));
-    MiniDumpWriteDump = (MiniDumpWriteDump_t)GetFuncAddress(("MiniDumpWriteDump"));
-
-    return (SymGetOptions && SymSetOptions && SymInitialize && SymCleanup
-        && StackWalk && SymFromAddr && SymFunctionTableAccess && SymGetModuleBase
-        && SymGetLineFromAddr && SymSetContext && SymEnumSymbols
-        && SymGetTypeInfo && EnumerateLoadedModules && MiniDumpWriteDump);
-}
-
-// DbgHelp dll wrapper object
-DbghlpDll&  GetDbghelpDll()
-{
-    static DbghlpDll   instance;
-    return instance;
-}
-
