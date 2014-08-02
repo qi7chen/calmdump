@@ -24,8 +24,11 @@ information to a specified file. that's what it do and what it don't do.
 
 [A Crash Course on the Depths of Win32™ Structured Exception Handling](http://www.microsoft.com/msj/0197/exception/exception.aspx)
 
-[Structure Exception Handling](http://www.longene.org/techdoc/0031255001224576939.html)  (in Chinese)
+[Vectored Exception Handling](http://msdn.microsoft.com/en-us/magazine/cc301714.aspx)
 
+[Programming against the x64 exception handling support](http://www.nynaeve.net/?p=99)
+
+[Structure Exception Handling in Windows NT](http://www.longene.org/techdoc/0031255001224576939.html)  (in Chinese)
 
 
 [1]: https://github.com/ichenq/calmdump
