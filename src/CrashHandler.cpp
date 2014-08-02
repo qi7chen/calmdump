@@ -24,7 +24,7 @@ be found in the Authors.txt file in the root of the source tree.
 #include <signal.h>
 #include <time.h>
 #include "Report.h"
-
+#include "Dbghlp.h"
 
 #pragma warning(disable: 4996)
 
@@ -522,7 +522,7 @@ int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo /*= NULL*/)
     }
 
     CreateMiniDump(&excptr);
-    CreateReport(&excptr, "CrashReport.log");
+    CreateReport(&excptr);
 
     return 0;
 }

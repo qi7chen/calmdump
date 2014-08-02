@@ -5,6 +5,8 @@
 // @brief  
 //////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <Windows.h>
 
 enum
@@ -21,4 +23,4 @@ enum
 };
 
 // Create stack frame log of this exception
-void CreateReport(EXCEPTION_POINTERS* ep, const char* szReportFile);
+void CreateReport(EXCEPTION_POINTERS* ep);

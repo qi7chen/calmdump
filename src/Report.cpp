@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "Report.h"
-#include "Utility.h"
+#include "Dbghlp.h"
 #include "cvconst.h"
 #include <time.h>
 #include <string>
@@ -18,51 +18,23 @@
 static void PrintSystemInfo();
 
 // Callback pro to numerate symbols
-static BOOL CALLBACK EnumSymbolsProcCallback(PSYMBOL_INFO pSymInfo,
-        ULONG SymSize,
-        PVOID data);
-
-// Report file name
-static char g_szReportFileName[MAX_PATH];
-
-// Log text buffer
-std::string*    g_pLogBuffer = NULL;
-
-
+static BOOL CALLBACK EnumSymbolsProcCallback(PSYMBOL_INFO pSymInfo, ULONG SymSize, PVOID data);
 
 
 // Add log text to file
 static void AddToReport(const char* fmt, ...)
 {
-    char logbuf[MAX_BUF_SIZE];
+    char buf[MAX_BUF_SIZE];
     va_list ap;
     va_start(ap, fmt);
-    int count = vsprintf_s(logbuf, MAX_BUF_SIZE, fmt, ap);
+    int count = _vsnprintf(buf, MAX_BUF_SIZE, fmt, ap);
     va_end(ap);
     if (count <= 0)
     {
         return ;
     }
-
-    if (g_pLogBuffer == NULL)
-    {
-        g_pLogBuffer = new std::string();
-        g_pLogBuffer->reserve(MAX_BUF_SIZE);
-    }
-
-    g_pLogBuffer->append(logbuf, count);
+    LogModuleFile("CrashRpt", "%s", buf);
 }
-
-static void FlushReport()
-{
-    if (g_pLogBuffer)
-    {
-        LogFile(g_szReportFileName, g_pLogBuffer->c_str(), g_pLogBuffer->length());
-        delete g_pLogBuffer;
-        g_pLogBuffer = NULL;
-    }
-}
-
 
 
 // Given an exception code, returns a pointer to a static string with a 
@@ -253,10 +225,9 @@ static void PrintExceptInfo(EXCEPTION_POINTERS* ep)
 }
 
 // Create stack frame log of this exception
-void CreateReport(EXCEPTION_POINTERS* ep, const char* szReportFile)
+void CreateReport(EXCEPTION_POINTERS* ep)
 {
-    assert(szReportFile && ep);
-    strcpy_s(g_szReportFileName, MAX_PATH, szReportFile);
+    assert(ep);
 
     time_t now = time(NULL);
     AddToReport(("\nException report created at %s"), ctime(&now));
@@ -282,8 +253,6 @@ void CreateReport(EXCEPTION_POINTERS* ep, const char* szReportFile)
     WalkStack(ep->ContextRecord, 0, MAX_DUMP_DEPTH);
 
     PrintSystemInfo();
-
-    FlushReport();
 
     if (!GetDbghelpDll().SymCleanup(::GetCurrentProcess()))
     {
