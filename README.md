@@ -11,6 +11,19 @@ without screen capturing, file compression or video recording or anything used f
 debugging case, when our server app crashes, calmdump collect the minidump file and print stack 
 information to a specified file. that's what it do and what it don't do.
 
+## Usage
+
+~~~~~~~~cpp
+#include <Windows.h>
+#include <CrashRpt.h>
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nCmdShow)
+{
+    crInstall();    // this API handles everything
+    
+    // do your own job
+}
+~~~~~~~~
 
 ## Installation
 
