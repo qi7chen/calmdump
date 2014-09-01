@@ -1,9 +1,4 @@
-//////////////////////////////////////////////////////////////////////////
-// @file    DumpReport.h
-// @author  ichenq@gmail.com
-// @date    Jul, 2013
-// @brief
-//////////////////////////////////////////////////////////////////////////
+// Copyright 2014 ichenq@gmail.com
 
 #include "Report.h"
 #include "Dbghlp.h"
@@ -19,6 +14,15 @@ static void PrintSystemInfo();
 
 // Callback pro to numerate symbols
 static BOOL CALLBACK EnumSymbolsProcCallback(PSYMBOL_INFO pSymInfo, ULONG SymSize, PVOID data);
+
+static bool FormatSymbolValue(PSYMBOL_INFO pSym, STACKFRAME* sf, char* pszBuffer, unsigned cbBuffer);
+
+static char* FormatOutputValue(char* pszCurrBuffer, BasicType basicType, DWORD64 length, PVOID pAddress);
+
+static BasicType GetBasicType(DWORD typeIndex, DWORD64 modBase);
+
+static char* DumpTypeIndex(char* pszCurrBuffer, DWORD64 modBase, DWORD dwTypeIndex,
+    unsigned nestingLevel, DWORD_PTR offset, bool & bHandled, char* Name);
 
 
 // Add log text to file
@@ -263,14 +267,18 @@ void CreateReport(EXCEPTION_POINTERS* ep)
 
 BOOL CALLBACK EnumSymbolsProcCallback(PSYMBOL_INFO pSymInfo, ULONG SymSize, PVOID userContext)
 {
-    const STACKFRAME* sf = (const STACKFRAME*)userContext;
+    STACKFRAME* sf = (STACKFRAME*)userContext;
 
     // we're only interested in parameters and local variables
     if ( pSymInfo->Flags & SYMF_PARAMETER || pSymInfo->Flags & SYMF_LOCAL)
     {
+        char szBuffer[2048];
         __try
         {
-            //DumpParamValue(pSymInfo, *sf);
+            if (FormatSymbolValue(pSymInfo, sf, szBuffer, _countof(szBuffer)))
+            {
+                AddToReport("\t%s\r\n", szBuffer);
+            }
         }
         __except(EXCEPTION_EXECUTE_HANDLER)
         {
@@ -279,6 +287,231 @@ BOOL CALLBACK EnumSymbolsProcCallback(PSYMBOL_INFO pSymInfo, ULONG SymSize, PVOI
 
     // return true to continue enumeration, false would have stopped it
     return TRUE;
+}
+
+
+// Given a SYMBOL_INFO representing a particular variable, displays its
+// contents.  If it's a user defined type, display the members and their
+// values.
+bool FormatSymbolValue(PSYMBOL_INFO pSym, STACKFRAME* sf, char* pszBuffer, unsigned cbBuffer)
+{
+    char* pszCurrBuffer = pszBuffer;
+
+    // Indicate if the variable is a local or parameter
+    if (pSym->Flags & IMAGEHLP_SYMBOL_INFO_PARAMETER)
+        pszCurrBuffer += sprintf(pszCurrBuffer, "Parameter ");
+    else if (pSym->Flags & IMAGEHLP_SYMBOL_INFO_LOCAL)
+        pszCurrBuffer += sprintf(pszCurrBuffer, "Local ");
+
+    // If it's a function, don't do anything.
+    if (pSym->Tag == 5)                                   // SymTagFunction from CVCONST.H from the DIA SDK
+        return false;
+
+    DWORD_PTR pVariable = 0;                                // Will point to the variable's data in memory
+
+    if (pSym->Flags & IMAGEHLP_SYMBOL_INFO_REGRELATIVE)
+    {
+        // if ( pSym->Register == 8 )   // EBP is the value 8 (in DBGHELP 5.1)
+        {                                                   //  This may change!!!
+            pVariable = sf->AddrFrame.Offset;
+            pVariable += (DWORD_PTR)pSym->Address;
+        }
+        // else
+        //  return false;
+    }
+    else if (pSym->Flags & IMAGEHLP_SYMBOL_INFO_REGISTER)
+    {
+        return false;                                       // Don't try to report register variable
+    }
+    else
+    {
+        pVariable = (DWORD_PTR)pSym->Address;               // It must be a global variable
+    }
+
+    // Determine if the variable is a user defined type (UDT).  IF so, bHandled
+    // will return true.
+    bool bHandled;
+    pszCurrBuffer = DumpTypeIndex(pszCurrBuffer, pSym->ModBase, pSym->TypeIndex,
+        0, pVariable, bHandled, pSym->Name);
+
+    if (!bHandled)
+    {
+        // The symbol wasn't a UDT, so do basic, stupid formatting of the
+        // variable.  Based on the size, we're assuming it's a char, WORD, or
+        // DWORD.
+        BasicType basicType = GetBasicType(pSym->TypeIndex, pSym->ModBase);
+        pszCurrBuffer += sprintf(pszCurrBuffer, rgBaseType[basicType]);
+
+        // Emit the variable name
+        pszCurrBuffer += sprintf(pszCurrBuffer, "\'%s\'", pSym->Name);
+
+        pszCurrBuffer = FormatOutputValue(pszCurrBuffer, basicType, pSym->Size,
+            (PVOID)pVariable);
+    }
+
+    return true;
+}
+
+char* FormatOutputValue(char* pszCurrBuffer, BasicType basicType, DWORD64 length, PVOID pAddress)
+{
+    // Format appropriately (assuming it's a 1, 2, or 4 bytes (!!!)
+    if (length == 1)
+        pszCurrBuffer += sprintf(pszCurrBuffer, " = %X", *(PBYTE)pAddress);
+    else if (length == 2)
+        pszCurrBuffer += sprintf(pszCurrBuffer, " = %X", *(PWORD)pAddress);
+    else if (length == 4)
+    {
+        if (basicType == btFloat)
+        {
+            pszCurrBuffer += sprintf(pszCurrBuffer, " = %f", *(PFLOAT)pAddress);
+        }
+        else if (basicType == btChar)
+        {
+            if (!IsBadStringPtr(*(PSTR*)pAddress, 32))
+            {
+                pszCurrBuffer += sprintf(pszCurrBuffer, " = \"%.31s\"",
+                    *(PDWORD)pAddress);
+            }
+            else
+                pszCurrBuffer += sprintf(pszCurrBuffer, " = %X",
+                *(PDWORD)pAddress);
+        }
+        else
+            pszCurrBuffer += sprintf(pszCurrBuffer, " = %X", *(PDWORD)pAddress);
+    }
+    else if (length == 8)
+    {
+        if (basicType == btFloat)
+        {
+            pszCurrBuffer += sprintf(pszCurrBuffer, " = %lf",
+                *(double *)pAddress);
+        }
+        else
+            pszCurrBuffer += sprintf(pszCurrBuffer, " = %I64X",
+            *(DWORD64*)pAddress);
+    }
+
+    return pszCurrBuffer;
+}
+
+
+// If it's a user defined type (UDT), recurse through its members until we're
+// at fundamental types.  When he hit fundamental types, return
+// bHandled = false, so that FormatSymbolValue() will format them.
+char* DumpTypeIndex(char* pszCurrBuffer, DWORD64 modBase, DWORD dwTypeIndex, 
+                    unsigned nestingLevel, DWORD_PTR offset, bool & bHandled, char* Name)
+{
+    bHandled = false;
+
+    // Get the name of the symbol.  This will either be a Type name (if a UDT),
+    // or the structure member name.
+    WCHAR * pwszTypeName;
+    if (GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, dwTypeIndex, TI_GET_SYMNAME,
+        &pwszTypeName))
+    {
+        pszCurrBuffer += sprintf(pszCurrBuffer, " %ls", pwszTypeName);
+        LocalFree(pwszTypeName);
+    }
+
+    // Determine how many children this type has.
+    DWORD dwChildrenCount = 0;
+    GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, dwTypeIndex, TI_GET_CHILDRENCOUNT,
+        &dwChildrenCount);
+
+    if (!dwChildrenCount)                                 // If no children, we're done
+        return pszCurrBuffer;
+
+    // Prepare to get an array of "TypeIds", representing each of the children.
+    // SymGetTypeInfo(TI_FINDCHILDREN) expects more memory than just a
+    // TI_FINDCHILDREN_PARAMS struct has.  Use derivation to accomplish this.
+    struct FINDCHILDREN : TI_FINDCHILDREN_PARAMS
+    {
+        ULONG   MoreChildIds[1024];
+        FINDCHILDREN(){ Count = sizeof(MoreChildIds) / sizeof(MoreChildIds[0]); }
+    } children;
+
+    children.Count = dwChildrenCount;
+    children.Start = 0;
+
+    // Get the array of TypeIds, one for each child type
+    if (!GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, dwTypeIndex, TI_FINDCHILDREN,
+        &children))
+    {
+        return pszCurrBuffer;
+    }
+
+    // Append a line feed
+    pszCurrBuffer += sprintf(pszCurrBuffer, "\r\n");
+
+    // Iterate through each of the children
+    for (unsigned i = 0; i < dwChildrenCount; i++)
+    {
+        // Add appropriate indentation level (since this routine is recursive)
+        for (unsigned j = 0; j <= nestingLevel + 1; j++)
+            pszCurrBuffer += sprintf(pszCurrBuffer, "\t");
+
+        // Recurse for each of the child types
+        bool bHandled2;
+        BasicType basicType = GetBasicType(children.ChildId[i], modBase);
+        pszCurrBuffer += sprintf(pszCurrBuffer, rgBaseType[basicType]);
+
+        pszCurrBuffer = DumpTypeIndex(pszCurrBuffer, modBase,
+            children.ChildId[i], nestingLevel + 1,
+            offset, bHandled2, ""/*Name */);
+
+        // If the child wasn't a UDT, format it appropriately
+        if (!bHandled2)
+        {
+            // Get the offset of the child member, relative to its parent
+            DWORD dwMemberOffset;
+            GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, children.ChildId[i],
+                TI_GET_OFFSET, &dwMemberOffset);
+
+            // Get the real "TypeId" of the child.  We need this for the
+            // SymGetTypeInfo( TI_GET_TYPEID ) call below.
+            DWORD typeId;
+            GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, children.ChildId[i],
+                TI_GET_TYPEID, &typeId);
+
+            // Get the size of the child member
+            ULONG64 length;
+            GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, typeId, TI_GET_LENGTH, &length);
+
+            // Calculate the address of the member
+            DWORD_PTR dwFinalOffset = offset + dwMemberOffset;
+            pszCurrBuffer = FormatOutputValue(pszCurrBuffer, basicType,
+                length, (PVOID)dwFinalOffset);
+
+            pszCurrBuffer += sprintf(pszCurrBuffer, "\r\n");
+        }
+    }
+
+    bHandled = true;
+    return pszCurrBuffer;
+}
+
+BasicType GetBasicType(DWORD typeIndex, DWORD64 modBase)
+{
+    BasicType basicType;
+    if (GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, typeIndex,
+        TI_GET_BASETYPE, &basicType))
+    {
+        return basicType;
+    }
+
+    // Get the real "TypeId" of the child.  We need this for the
+    // SymGetTypeInfo( TI_GET_TYPEID ) call below.
+    DWORD typeId;
+    if (GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, typeIndex, TI_GET_TYPEID, &typeId))
+    {
+        if (GetDbghelpDll().SymGetTypeInfo(GetCurrentProcess(), modBase, typeId, TI_GET_BASETYPE,
+            &basicType))
+        {
+            return basicType;
+        }
+    }
+
+    return btNoType;
 }
 
 bool GetProcessorName(char* sProcessorName, DWORD maxcount)

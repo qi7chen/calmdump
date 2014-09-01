@@ -1,3 +1,5 @@
+// Copyright 2014 ichenq@gmail.com
+
 #include "Dbghlp.h"
 
 
