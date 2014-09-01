@@ -22,12 +22,6 @@ be found in the Authors.txt file in the root of the source tree.
 #include <string>
 
 
-#ifndef _countof
-    template <typename T, unsigned N>
-    char (&_countof_helper(const T (&array)[N]))[N];
-#define _countof(array) sizeof(_countof_helper(array))
-#endif
-
 #define LAST_ERROR_MSG      (GetErrorMessage(::GetLastError()).c_str())
 
 #define LOG_LAST_ERROR()    LogModuleFile("ERROR",                          \
@@ -61,38 +55,6 @@ void LogModuleFile(const char* module, const char* fmt, ...);
 // Get exception pointers
 void GetExceptionPointers(DWORD dwExceptionCode, EXCEPTION_POINTERS* pExceptionPointers);
 
-
-// Wrapper for whatever critical section we have
-class CritcalSection
-{
-public:
-    CritcalSection() 
-    {
-        ::InitializeCriticalSectionAndSpinCount(&m_CritSec, 1024);
-    };
-
-    ~CritcalSection() 
-    {
-        ::DeleteCriticalSection(&m_CritSec);
-    }
-
-    void Lock() 
-    {
-        ::EnterCriticalSection(&m_CritSec);
-    };
-
-    void Unlock() 
-    {
-        ::LeaveCriticalSection(&m_CritSec);
-    };
-
-private:
-    // noncopyable
-    CritcalSection(const CritcalSection& );
-    CritcalSection &operator=(const CritcalSection& );
-
-    CRITICAL_SECTION m_CritSec;
-};
 
 // Auto free dll handle wrapper
 struct DllHandle

@@ -13,12 +13,7 @@ be found in the Authors.txt file in the root of the source tree.
 // Authors: mikecarruth, zexspectrum
 // Date: 
 
-//////////////////////////////////////////////////////////////////////////
-// @file    CrashHandler.cpp 
-// @author  ichenq@gmail.com 
-// @date    Jul, 2013
-// @brief  
-//////////////////////////////////////////////////////////////////////////
+
 
 #include "CrashHandler.h"
 #include <signal.h>

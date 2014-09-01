@@ -127,9 +127,7 @@
  *    thread, except the main one.
  * 
  */
-
-CRASHRPTAPI(int)
-crInstall();
+int crInstall();
 
 
 /*! \ingroup CrashRptAPI 
@@ -152,9 +150,7 @@ crInstall();
  *  \sa crInstallW(), crInstallA(), crInstall(), crUninstall(),
  *      CrAutoInstallHelper
  */
-
-CRASHRPTAPI(int)
-crUninstall();
+int crUninstall();
 
 
 /*! \ingroup CrashRptAPI
@@ -199,9 +195,7 @@ crUninstall();
 *  \sa 
 *    crInstall()
 */
-
-CRASHRPTAPI(int)
-crInstallToCurrentThread2(DWORD dwFlags);
+int crInstallToCurrentThread2(DWORD dwFlags);
 
 /*! \ingroup CrashRptAPI  
 *  \brief Uninstalls C++ exception handlers from the current thread.
@@ -225,8 +219,7 @@ crInstallToCurrentThread2(DWORD dwFlags);
 *       crUninstallFromCurrentThread(), CrThreadAutoInstallHelper
 */
 
-CRASHRPTAPI(int)
-crUninstallFromCurrentThread();
+int crUninstallFromCurrentThread();
 
 // Exception types
 #define CR_WIN32_STRUCTURED_EXCEPTION   0    //!< SEH exception (deprecated name, use \ref CR_SEH_EXCEPTION instead).
@@ -366,11 +359,7 @@ typedef CR_EXCEPTION_INFO *PCR_EXCEPTION_INFO;
  *
  *     \endcode 
  */
-
-CRASHRPTAPI(int)
-crExceptionFilter(
-  unsigned int code, 
-  __in_opt struct _EXCEPTION_POINTERS* ep);
+int crExceptionFilter(unsigned int code, struct _EXCEPTION_POINTERS* ep);
 
 // Flags used by crEmulateCrash() function
 #define CR_NONCONTINUABLE_EXCEPTION  32  //!< Non continuable sofware exception. 
@@ -427,10 +416,7 @@ crExceptionFilter(
  *  \endcode
  *
  */
-
-CRASHRPTAPI(int)
-crEmulateCrash(
-  unsigned ExceptionType) throw (...);
+int crEmulateCrash(unsigned ExceptionType) throw (...);
 
 
 

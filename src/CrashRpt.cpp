@@ -30,20 +30,18 @@ be found in the Authors.txt file in the root of the source tree.
 #include <eh.h>
 #include "CrashHandler.h"
 
-CRASHRPTAPI(int)
-crInstall()
+int crInstall()
+{
+    SetProcessExceptionHanlders();
+    return 0;
+}
+
+int crUninstall()
 {
     return 0;
 }
 
-CRASHRPTAPI(int)
-crUninstall()
-{
-    return 0;
-}
-
-CRASHRPTAPI(int) 
-crExceptionFilter(unsigned int code, struct _EXCEPTION_POINTERS* ep)
+int crExceptionFilter(unsigned int code, struct _EXCEPTION_POINTERS* ep)
 {
     CR_EXCEPTION_INFO ei;
     memset(&ei, 0, sizeof(CR_EXCEPTION_INFO));
@@ -179,7 +177,7 @@ static void CauseStackOverflow()
     CauseStackOverflow();
 }
 
-CRASHRPTAPI(int) crEmulateCrash(unsigned ExceptionType)
+int crEmulateCrash(unsigned ExceptionType)
 {
     switch(ExceptionType)
     {

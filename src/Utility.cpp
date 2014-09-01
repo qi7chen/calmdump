@@ -13,13 +13,6 @@ be found in the Authors.txt file in the root of the source tree.
 // Authors: mikecarruth, zexspectrum
 // Date: 
 
-//////////////////////////////////////////////////////////////////////////
-// @file    Utility.cpp
-// @author  ichenq@gmail.com 
-// @date    Jul, 2013
-// @brief  
-//////////////////////////////////////////////////////////////////////////
-
 
 #include "Utility.h"
 #include <Tlhelp32.h>
@@ -95,7 +88,7 @@ void LogModuleFile(const char* module, const char* fmt, ...)
     time_t now = time(NULL);
     tm date = *localtime(&now);
     char filename[256];
-    int r = _snprintf(filename, 256, "%s_%d-%d-%d.log", module, date.tm_year + 1900,
+    int r = _snprintf(filename, 256, "%s_%d-%02d-%02d.log", module, date.tm_year + 1900,
         date.tm_mon+1, date.tm_mday);
     if (r <= 0)
     {
