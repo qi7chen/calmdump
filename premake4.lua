@@ -13,7 +13,7 @@ solution 'calmdump'
     configuration "Release"
         flags { 'Symbols', 'Optimize' }
 
-    project 'libcalmdump'
+    project 'calmdump'
         kind 'StaticLib'
         location 'build'
         uuid '90671AD7-3805-47bb-A425-D7F5F8C798DA'
@@ -26,11 +26,10 @@ solution 'calmdump'
             'WIN32_LEAN_AND_MEAN',
             '_WIN32_WINNT=0x0502',
         }
-
         files
         {
-            'src/**.h',
-            'src/**.cpp',
+            'src/*.h',
+            'src/*.cpp',
         }
 
     project 'tests'
@@ -39,8 +38,8 @@ solution 'calmdump'
         uuid '4AB5B35B-CD36-40fa-94C3-A4276D120394'
         files
         {
-            'tests/**.h',
-            'tests/**.cpp',
+            'tests/*.h',
+            'tests/*.cpp',
         }
-
-        links ( 'libcalmdump' )
+        includedirs {'src'}
+        links {'calmdump'}
