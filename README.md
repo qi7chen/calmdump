@@ -5,7 +5,7 @@ calmdump is a C++ server-end crash reporting component for Windows.
 ## Introduction
 
 [calmdump] [1] takes the core exception handling code in [crashrpt] [2],
-without screen capturing, file compression or video recording or anything used for client reporting.
+without screen capturing, file compression, video recording or anything else for client only usage.
 
 [calmdump] [1] aims to be a lightweight component of a C++ server-end software, mostly used for crash
 debugging case, when our server app crashes, calmdump collect the minidump file and print stack 
@@ -27,10 +27,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nCmdShow
 
 ## Installation
 
-1. Obtain and install premake building script tool(http://industriousone.com/premake/download)
+1. Obtain premake4(http://industriousone.com/premake/download)
 2. Use premake4 to generate your version of Visual Studio projects, example: `premake4 vs2008`
-3. Double click the Visual Studio solution file to launch Visual Studio IDE.
-4. Click `build solution` to build this library.
 
 
 ## Further Reading
