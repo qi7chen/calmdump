@@ -6,6 +6,7 @@ solution 'calmdump'
     language 'C++'    
     targetdir 'bin'
     configurations {'Debug', 'Release'}
+    platforms {'x32','x64'}
 
     configuration "Debug"
         flags { 'Symbols' }
@@ -16,7 +17,6 @@ solution 'calmdump'
     project 'calmdump'
         kind 'StaticLib'
         location 'build'
-        uuid '90671AD7-3805-47bb-A425-D7F5F8C798DA'
         flags
         {
             'ExtraWarnings',
@@ -25,6 +25,7 @@ solution 'calmdump'
         {
             'WIN32_LEAN_AND_MEAN',
             '_WIN32_WINNT=0x0502',
+            'NOMINMAX',
         }
         files
         {
@@ -32,14 +33,19 @@ solution 'calmdump'
             'src/*.cpp',
         }
 
-    project 'tests'
+    project 'test'
         kind 'ConsoleApp'
         location 'build'
-        uuid '4AB5B35B-CD36-40fa-94C3-A4276D120394'
         files
         {
             'tests/*.h',
             'tests/*.cpp',
         }
-        includedirs {'src'}
-        links {'calmdump'}
+        includedirs 
+        {
+            'src'
+        }
+        links 
+        {
+            'calmdump'
+        }
