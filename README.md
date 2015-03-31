@@ -28,7 +28,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nCmdShow
 ## Installation
 
 1. Obtain premake4(http://industriousone.com/premake/download)
-2. Use premake4 to generate your version of Visual Studio projects, example: `premake4 vs2008`
+2. Use premake4 to generate Visual Studio project files, e.g. `premake4 vs2008`
 
 
 ## Further Reading
