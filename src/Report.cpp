@@ -37,7 +37,8 @@ static void AddToReport(const char* fmt, ...)
     {
         return ;
     }
-    LogModuleFile("CrashRpt", "%s", buf);
+    std::string name = GetAppName();
+    LogModuleFile(name.c_str(), "%s", buf);
 }
 
 
