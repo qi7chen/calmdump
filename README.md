@@ -2,6 +2,10 @@
 
 calmdump是用于Windows C++服务端的crash report组件，从[crashrpt] [1]里面提取出核心的异常处理代码，并增加了异常堆栈打印。
 
+[calmdump] [1] takes the core exception handling code in [crashrpt] [2], but no client-only feature(screen capturing, file compression, video recording etc).
+on collect the minidump file and print stack information to a specified file. 
+
+
 
 ## API
 
@@ -20,8 +24,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nCmdShow
 
 ## 安装
 
-1. Obtain premake5(http://premake.github.io/download.html)
-2. Type `premake5 vs2013` to generate Visual C++ solution files
+1. Obtain premake5(https://github.com/premake/premake-core)
+2. Type `premake5 vs2013` to generate Visual C++ 2013 solution files
 
 
 ## 扩展阅读
