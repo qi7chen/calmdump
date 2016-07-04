@@ -74,11 +74,6 @@ struct CurrentProcessCrashHandler
 };
 
 
-CurrentProcessCrashHandler* GetCurrentProcessCrashHandler();
-
-#define LOCK_HANDLER()      GetCurrentProcessCrashHandler()->critsec.Enter()
-#define UNLOCK_HANDLER()    GetCurrentProcessCrashHandler()->critsec.Leave()
-
 // Generates error report	
 int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo);
 

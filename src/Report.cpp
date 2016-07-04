@@ -1,4 +1,4 @@
-// Copyright (C) 2013-2015 ichenq@gmail.com. All rights reserved.
+// Copyright (C) 2013-2016 ichenq@outlook.com. All rights reserved.
 // Distributed under the terms and conditions of the Apache License.
 // See accompanying files LICENSE.
 
@@ -30,23 +30,18 @@ static char* DumpTypeIndex(char* pszCurrBuffer, DWORD64 modBase, DWORD dwTypeInd
 // Add log text to file
 static void AddToReport(const char* fmt, ...)
 {
-    char buf[MAX_BUF_SIZE];
+    std::string text;
     va_list ap;
     va_start(ap, fmt);
-    int count = _vsnprintf(buf, MAX_BUF_SIZE, fmt, ap);
+    StringAppendV(&text, fmt, ap);
     va_end(ap);
-    if (count <= 0)
-    {
-        return ;
-    }
-    std::string name = GetAppName();
-    LogModuleFile(name.c_str(), "%s", buf);
+    WriteTextToFile(GetAppName(), text);
 }
 
 
 // Given an exception code, returns a pointer to a static string with a 
 // description of the exception                                         
-const char* GetExceptionString( DWORD dwCode )
+std::string GetExceptionString(DWORD dwCode)
 {
 #define EXCEPTION( x ) case EXCEPTION_##x: return (#x);
     switch ( dwCode )
@@ -78,12 +73,12 @@ const char* GetExceptionString( DWORD dwCode )
     // If not one of the "known" exceptions, try to get the string
     // from NTDLL.DLL's message table.
 
-    static TCHAR szBuffer[512] = { 0 };
+    char szBuffer[512] = { 0 };
     FormatMessage( FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_HMODULE,
         GetModuleHandle( ("NTDLL.DLL") ),
         dwCode, 0, szBuffer, sizeof( szBuffer ), 0 );
 
-    return szBuffer;
+    return std::string(szBuffer);
 }
 
 static void DumpSymbolName(DWORD dwLevel, const STACKFRAME& sf)
@@ -141,7 +136,7 @@ static void DumpSymbolParam(const STACKFRAME& sf )
                 EnumSymbolsProcCallback,
                 (PVOID)&sf))    // data parameter for this callback
     {
-        LOG_LAST_ERROR();
+        LogLastError();
     }
 }
 
@@ -249,7 +244,7 @@ void CreateReport(EXCEPTION_POINTERS* ep)
     const HANDLE hProcess = ::GetCurrentProcess();
     if (!GetDbghelpDll().SymInitialize(hProcess, NULL, TRUE))
     {
-        LOG_LAST_ERROR();
+        LogLastError();
         return ;
     }
 
@@ -263,7 +258,7 @@ void CreateReport(EXCEPTION_POINTERS* ep)
 
     if (!GetDbghelpDll().SymCleanup(::GetCurrentProcess()))
     {
-        LOG_LAST_ERROR();
+        LogLastError();
     }
 }
 

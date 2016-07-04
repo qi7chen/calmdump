@@ -31,6 +31,10 @@ CurrentProcessCrashHandler* GetCurrentProcessCrashHandler()
     return &instance;
 }
 
+
+#define LOCK_HANDLER()      GetCurrentProcessCrashHandler()->critsec.Enter()
+#define UNLOCK_HANDLER()    GetCurrentProcessCrashHandler()->critsec.Leave()
+
 //////////////////////////////////////////////////////////////////////////
 //
 // Exception handler functions. 
@@ -471,7 +475,7 @@ static bool CreateMiniDump(EXCEPTION_POINTERS* ep)
     const std::string& strModule = GetAppName();
     time_t now = time(NULL);
     tm thisDate = *localtime(&now);
-    _snprintf(szFileName, MAX_PATH, ("%s_%4d%02d%02d-%02d%02d%02d.dmp"), strModule.c_str(), 
+    sprintf_s(szFileName, MAX_PATH, ("%s_%4d%02d%02d-%02d%02d%02d.dmp"), strModule.c_str(), 
         thisDate.tm_year+1900, thisDate.tm_mon+1, thisDate.tm_mday, thisDate.tm_hour,
         thisDate.tm_min, thisDate.tm_sec);
 
@@ -487,7 +491,7 @@ static bool CreateMiniDump(EXCEPTION_POINTERS* ep)
     }
     else
     {
-        LOG_LAST_ERROR();
+        LogLastError();
         return false;
     }
 }

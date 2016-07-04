@@ -17,24 +17,22 @@ be found in the Authors.txt file in the root of the source tree.
 #pragma once
 
 #include <assert.h>
+#include <stdarg.h> // For va_list and related operations
 #include <Windows.h>
 #include <dbghelp.h>
 #include <string>
 
-
-#define LAST_ERROR_MSG      (GetErrorMessage(::GetLastError()).c_str())
-
-#define LOG_LAST_ERROR()    LogModuleFile("ERROR",                          \
-                                ("%s()[Line: %d][Error: 0x%x]\n%s\r\n"),    \
-                                __FUNCTION__,                               \
-                                __LINE__,                                   \
-                                ::GetLastError(),                           \
-                                LAST_ERROR_MSG)
-
+#pragma warning(disable: 4127)
 
 // Formats a string of file size
 std::string FileSizeToStr(ULONG64 uFileSize);
 
+// Printf-like, but std::string as return value
+std::string StringPrintf(const char* format, ...);
+
+// Lower-level routine that takes a va_list and appends to a specified
+// string.  All other routines are just convenience wrappers around it.
+void StringAppendV(std::string* dst, const char* format, va_list ap);
 
 // Returns mudule name of the launched current process.
 std::string GetModuleName(HMODULE hModule);
@@ -48,12 +46,19 @@ std::string GetAppName();
 std::string GetErrorMessage(DWORD dwError);
 
 
-// Write formatted log text to file
-void LogModuleFile(const char* module, const char* fmt, ...);
+// Write text string to file
+void WriteTextToFile(const std::string& module, const std::string& message);
 
 
 // Get exception pointers
 void GetExceptionPointers(DWORD dwExceptionCode, EXCEPTION_POINTERS* pExceptionPointers);
+
+
+#define LogLastError()   do { \
+                            std::string msg = GetErrorMessage(::GetLastError()); \
+                            WriteTextToFile("FATAL", StringPrintf("%s()[Line: %d][Error: 0x%x]\n%s\r\n", \
+                                __FUNCTION__, __LINE__, ::GetLastError(), msg.c_str())); \
+                         } while (false);
 
 
 // Auto free dll handle wrapper
@@ -70,6 +75,7 @@ struct DllHandle
         if (handle_ != NULL)
         {
             ::FreeLibrary(handle_);
+            handle_ = NULL;
         }
     }
 

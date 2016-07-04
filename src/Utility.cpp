@@ -23,6 +23,73 @@ be found in the Authors.txt file in the root of the source tree.
 
 #pragma warning(disable: 4996)
 
+#ifndef va_copy
+// This is a hack, assuming va_list is simply a pointer into the stack and is safe to copy.
+#define va_copy(dest, src) ((dest) = (src))
+#endif
+
+void StringAppendV(std::string* dst, const char* format, va_list ap) 
+{
+    // First try with a small fixed size buffer
+    static const int kSpaceLength = 1024;
+    char space[kSpaceLength];
+
+    // It's possible for methods that use a va_list to invalidate
+    // the data in it upon use.  The fix is to make a copy
+    // of the structure before using it and use that copy instead.
+    va_list backup_ap;
+    va_copy(backup_ap, ap);
+    int result = vsnprintf(space, kSpaceLength, format, backup_ap);
+    va_end(backup_ap);
+
+    if (result < kSpaceLength) 
+    {
+        if (result >= 0) {
+            // Normal case -- everything fit.
+            dst->append(space, result);
+            return;
+        }
+
+        // Error or MSVC running out of space.  MSVC 8.0 and higher
+        // can be asked about space needed with the special idiom below:
+        va_copy(backup_ap, ap);
+        result = vsnprintf(NULL, 0, format, backup_ap);
+        va_end(backup_ap);
+
+        if (result < 0) 
+        {
+            // Just an error.
+            return;
+        }
+    }
+
+    // Increase the buffer size to the size requested by vsnprintf,
+    // plus one for the closing \0.
+    int length = result + 1;
+    char* buf = new char[length];
+
+    // Restore the va_list before we use it again
+    va_copy(backup_ap, ap);
+    result = vsnprintf(buf, length, format, backup_ap);
+    va_end(backup_ap);
+
+    if (result >= 0 && result < length) 
+    {
+        // It fit
+        dst->append(buf, result);
+    }
+    delete[] buf;
+}
+
+std::string StringPrintf(const char* format, ...) 
+{
+    va_list ap;
+    va_start(ap, format);
+    std::string result;
+    StringAppendV(&result, format, ap);
+    va_end(ap);
+    return result;
+}
 
 // Returns mudule name of the launched current process.
 std::string GetModuleName(HMODULE hModule)
@@ -54,16 +121,16 @@ std::string FileSizeToStr(ULONG64 uFileSize)
     else if (uFileSize < 1024)
     {
         float fSizeKbytes = (float)uFileSize / 1024.0f;
-        _snprintf(szSize, MAX_PATH, ("%0.1f KB"), fSizeKbytes);
+        sprintf_s(szSize, MAX_PATH, ("%0.1f KB"), fSizeKbytes);
     }
     else if (uFileSize < 1024*1024)
     {
-        _snprintf(szSize, MAX_PATH, ("%I64u KB"), uFileSize/1024);
+        sprintf_s(szSize, MAX_PATH, ("%I64u KB"), uFileSize / 1024);
     }
     else
     {
         float fSizeMbytes = (float)uFileSize / (float)(1024*1024);
-        _snprintf(szSize, MAX_PATH, ("%0.1f MB"), fSizeMbytes);
+        sprintf_s(szSize, MAX_PATH, ("%0.1f MB"), fSizeMbytes);
     }
     return szSize;
 }
@@ -81,24 +148,13 @@ std::string GetErrorMessage(DWORD dwError)
     return std::string(szbuffer, dwLen);
 }
 
-// Write formatted log text to file
-void LogModuleFile(const char* module, const char* fmt, ...)
+void WriteTextToFile(const std::string& module, const std::string& message)
 {
-    assert(module && fmt);
+    char filename[MAX_PATH];
     time_t now = time(NULL);
     tm date = *localtime(&now);
-    char filename[256];
-    int r = _snprintf(filename, 256, "%s_%d-%02d-%02d.log", module, date.tm_year + 1900,
-        date.tm_mon+1, date.tm_mday);
-    if (r <= 0)
-    {
-        return;
-    }
-    char buffer[512];
-    va_list ap;
-    va_start(ap, fmt);
-    r = vsnprintf(buffer, 512, fmt, ap);
-    va_end(ap);
+    int r = sprintf_s(filename, MAX_PATH, "%s_%d-%02d-%02d.log", module.c_str(), date.tm_year + 1900,
+        date.tm_mon + 1, date.tm_mday);
     if (r <= 0)
     {
         return;
@@ -106,7 +162,7 @@ void LogModuleFile(const char* module, const char* fmt, ...)
     FILE* fp = fopen(filename, "a+");
     if (fp)
     {
-        fwrite(buffer, 1, r, fp);
+        fwrite(message.c_str(), 1, message.size(), fp);
         fclose(fp);
     }
 }
