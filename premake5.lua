@@ -1,5 +1,5 @@
 --
--- Premake4 build script (http://industriousone.com/premake/download)
+-- Premake build script (https://github.com/premake/premake-core/wiki)
 --
 
 solution 'calmdump'
@@ -32,14 +32,20 @@ solution 'calmdump'
             'src/*.h',
             'src/*.cpp',
         }
-
-    project 'test'
+        
+    project 'example'
         kind 'ConsoleApp'
         location 'build'
+        defines
+        {
+            'WIN32_LEAN_AND_MEAN',
+            '_WIN32_WINNT=0x0502',
+            'NOMINMAX',
+        }        
         files
         {
-            'tests/*.h',
-            'tests/*.cpp',
+            'example/*.h',
+            'example/*.cpp',
         }
         includedirs 
         {
