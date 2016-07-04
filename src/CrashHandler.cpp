@@ -507,9 +507,10 @@ int GenerateErrorReport(PCR_EXCEPTION_INFO pExceptionInfo /*= NULL*/)
     }
 
     // Allocate memory in stack for storing exception pointers.
-    EXCEPTION_RECORD ExceptionRecord;
-    CONTEXT ContextRecord;    
-    EXCEPTION_POINTERS excptr;
+    EXCEPTION_RECORD ExceptionRecord = {};
+    CONTEXT ContextRecord = {};
+    EXCEPTION_POINTERS excptr = {};
+    ZeroMemory(&excptr, sizeof(excptr));
     excptr.ExceptionRecord = &ExceptionRecord;
     excptr.ContextRecord = &ContextRecord; 
 

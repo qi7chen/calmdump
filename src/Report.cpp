@@ -223,7 +223,8 @@ static void PrintExceptInfo(EXCEPTION_POINTERS* ep)
         const char* szOperation = (exceptinfo[0] ? ("write") : ("read"));
         AddToReport(("Failed to %d address 0x%08x\r\n"), szOperation, exceptinfo[1]);
     }
-    AddToReport(("Exception code: 0x%08x %s\r\n\r\n"), dwExceptCode, GetExceptionString(dwExceptCode));
+    std::string code = GetExceptionString(dwExceptCode);
+    AddToReport(("Exception code: 0x%08x %s\r\n\r\n"), dwExceptCode, code.c_str());
 }
 
 // Create stack frame log of this exception
