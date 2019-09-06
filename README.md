@@ -9,7 +9,7 @@ on collect the minidump file and print stack information to a specified file.
 
 ## API
 
-~~~~~~~~cpp
+```cpp
 #include <Windows.h>
 #include <CrashRpt.h>
 
@@ -19,13 +19,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nCmdShow
 
     // do your own job
 }
-~~~~~~~~
+```
 
 
-## 安装
+## 如何构建本项目
 
-1. Obtain premake5(https://github.com/premake/premake-core)
-2. Type `premake5 vs2013` to generate Visual C++ 2013 solution files
+* 支持[CMake](https://cmake.org/download/)和[premake](https://premake.github.io/download.html#v5)构建
+* CMake方式 `mkdir build && cd build && cmake ..`
+* premake方式 `premake5 vs2013` 或 `premake5 gmake`
 
 
 ## 扩展阅读
