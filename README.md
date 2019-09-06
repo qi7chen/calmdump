@@ -1,8 +1,8 @@
 # calmdump
 
-calmdump是用于Windows C++服务端的crash report组件，从[crashrpt] [1]里面提取出核心的异常处理代码，并增加了异常堆栈打印。
+calmdump是用于Windows C++服务端的crash report组件，从[crashrpt](http://crashrpt.sourceforge.net/)里面提取出核心的异常处理代码，并增加了异常堆栈打印。
 
-[calmdump] [1] takes the core exception handling code in [crashrpt] [2], but no client-only feature(screen capturing, file compression, video recording etc).
+[calmdump](https://github.com/ichenq/calmdump) takes the core exception handling code in [crashrpt](http://crashrpt.sourceforge.net/), but no client-only feature(screen capturing, file compression, video recording etc).
 on collect the minidump file and print stack information to a specified file. 
 
 
@@ -39,5 +39,3 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nCmdShow
 
 [Structure Exception Handling in Windows NT](http://www.longene.org/techdoc/0031255001224576939.html)
 
-
-[1]: http://crashrpt.sourceforge.net/ "crashrpt"
