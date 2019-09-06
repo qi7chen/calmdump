@@ -1,5 +1,5 @@
-// Copyright (C) 2013-2015 ichenq@gmail.com. All rights reserved.
-// Distributed under the terms and conditions of the Apache License.
+// Copyright (C) 2013-present prototyped.cn All rights reserved.
+// Distributed under the terms and conditions of the Apache License. 
 // See accompanying files LICENSE.
 
 

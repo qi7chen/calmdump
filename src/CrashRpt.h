@@ -37,12 +37,9 @@
  *  \author zeXspectrum 
  */
 
-//////////////////////////////////////////////////////////////////////////
-// @file    CrashRpt.h 
-// @author  ichenq@gmail.com 
-// @date    Jul, 2013
-// @brief   
-//////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2015 prototyped.cn All rights reserved.
+// Distributed under the terms and conditions of the Apache License. 
+// See accompanying files LICENSE.
 
 #pragma once
 

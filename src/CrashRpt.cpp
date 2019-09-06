@@ -13,12 +13,9 @@ be found in the Authors.txt file in the root of the source tree.
 // Authors: mikecarruth, zexspectrum
 // Date: 
 
-//////////////////////////////////////////////////////////////////////////
-// @file    CrashRpt.cpp
-// @author  ichenq@gmail.com 
-// @date    Jul, 2013
-// @brief  
-//////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2015 prototyped.cn All rights reserved.
+// Distributed under the terms and conditions of the Apache License. 
+// See accompanying files LICENSE.
 
 #include "CrashRpt.h"
 #include <float.h>
