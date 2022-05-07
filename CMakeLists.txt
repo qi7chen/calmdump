@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 project(calmdump)
 
@@ -19,24 +19,33 @@ add_definitions(
 file(GLOB_RECURSE LIB_HEADER_FILES src/*.h)
 file(GLOB_RECURSE LIB_SOURCE_FILES src/*.cpp)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 macro(SOURCE_GROUP_BY_DIR source_files)
-    set(sgbd_cur_dir ${CMAKE_CURRENT_SOURCE_DIR})
-    foreach(sgbd_file ${${source_files}})
-        string(REGEX REPLACE ${sgbd_cur_dir}/\(.*\) \\1 sgbd_fpath ${sgbd_file})
-        string(REGEX REPLACE "\(.*\)/.*" \\1 sgbd_group_name ${sgbd_fpath})
-        string(COMPARE EQUAL ${sgbd_fpath} ${sgbd_group_name} sgbd_nogroup)
-        string(REPLACE "/" "\\" sgbd_group_name ${sgbd_group_name})
-        if(sgbd_nogroup)
-            set(sgbd_group_name "\\")
-        endif(sgbd_nogroup)
-        source_group(${sgbd_group_name} FILES ${sgbd_file})
-    endforeach(sgbd_file)
+    foreach(FILE ${SRCS}) 
+        # Get the directory of the source file
+        get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
+
+        # Remove common directory prefix to make the group
+        string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "" GROUP "${PARENT_DIR}")
+
+        # Make sure we are using windows slashes
+        string(REPLACE "/" "\\" GROUP "${GROUP}")
+
+        # Group into "Source Files" and "Header Files"
+        if ("${FILE}" MATCHES ".*\\.cpp")
+           set(GROUP "Source Files${GROUP}")
+        elseif("${FILE}" MATCHES ".*\\.h")
+           set(GROUP "Header Files${GROUP}")
+        endif()
+
+        source_group("${GROUP}" FILES "${FILE}")
+    endforeach()
 endmacro(SOURCE_GROUP_BY_DIR)
 
 SOURCE_GROUP_BY_DIR(LIB_HEADER_FILES)
 SOURCE_GROUP_BY_DIR(LIB_SOURCE_FILES)
 
-add_library(crashrpt ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
+add_library(calmdump ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
 
 add_subdirectory(example)
