@@ -83,7 +83,7 @@ std::string GetExceptionString(DWORD dwCode)
 
 static void DumpSymbolName(DWORD dwLevel, const STACKFRAME& sf)
 {
-    DWORD dwAddress = sf.AddrPC.Offset;
+    DWORD64 dwAddress = sf.AddrPC.Offset;
     BYTE symbolBuffer[sizeof(SYMBOL_INFO) + MAX_NAME_LEN] = {};
     PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
     pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
@@ -116,8 +116,8 @@ static void DumpSymbolName(DWORD dwLevel, const STACKFRAME& sf)
 
 static void DumpSymbolParam(const STACKFRAME& sf )
 {
-    DWORD dwSymAddr = sf.AddrPC.Offset;
-    DWORD dwAddrFrame = sf.AddrFrame.Offset;
+    DWORD64 dwSymAddr = sf.AddrPC.Offset;
+    DWORD64 dwAddrFrame = sf.AddrFrame.Offset;
 
     // use SymSetContext to get just the locals/params for this frame
     IMAGEHLP_STACK_FRAME imagehlpStackFrame = {};
@@ -193,7 +193,7 @@ static void WalkStack(const CONTEXT* pContext, size_t skip, size_t maxDepth)
         // don't show this frame itself in the output
         if (nLevel >= skip)
         {
-            DumpSymbolName(nLevel - skip, sf);
+            DumpSymbolName((DWORD)(nLevel - skip), sf);
             DumpSymbolParam(sf);
             AddToReport(("\n"));
         }
@@ -209,7 +209,7 @@ static void PrintExceptInfo(EXCEPTION_POINTERS* ep)
     PVOID ExceptionAddress = ep->ExceptionRecord->ExceptionAddress;
     if (VirtualQuery(ExceptionAddress, &mbi, sizeof(mbi)))
     {
-        DWORD hMod = (DWORD)mbi.AllocationBase;
+        PVOID hMod = (PVOID)mbi.AllocationBase;
         if (GetModuleFileName((HMODULE)hMod, szModule, MAX_PATH))
         {
             AddToReport(("Module: %s\r\n"), szModule);
@@ -368,8 +368,7 @@ char* FormatOutputValue(char* pszCurrBuffer, BasicType basicType, DWORD64 length
         {
             if (!IsBadStringPtr(*(PSTR*)pAddress, 32))
             {
-                pszCurrBuffer += sprintf(pszCurrBuffer, " = \"%.31s\"",
-                    *(PDWORD)pAddress);
+                pszCurrBuffer += sprintf(pszCurrBuffer, " = \"%.31s\"", *(PSTR*)pAddress);
             }
             else
                 pszCurrBuffer += sprintf(pszCurrBuffer, " = %X",
